@@ -50,23 +50,23 @@ char *endboundary_string = NULL;
 
 const char *message_buffer = NULL;
 
-extern char *body_text;
 extern FILE *mm_yyin;
 FILE *curin;
 
-int mime_parts = 0;
-int debug = 0;
+static int mime_parts = 0;
+static int debug = 0;
 
 /* MiniMIME specific object pointers */
-MM_CTX *ctx;
-struct mm_mimepart *envelope = NULL;
-struct mm_mimepart *tmppart = NULL;
-struct mm_content *ctype = NULL;
+static MM_CTX *ctx;
+static struct mm_mimepart *envelope = NULL;
+static struct mm_mimepart *tmppart = NULL;
+static struct mm_content *ctype = NULL;
 
 /* Always points to the current MIME part */
-struct mm_mimepart *current_mimepart = NULL;
+static struct mm_mimepart *current_mimepart = NULL;
 
-int have_contenttype;
+/* Marker for indicating a found Content-Type header */
+static int have_contenttype;
 
 %}
 
