@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.5 2004/06/02 01:55:52 jfi Exp $
+ * $Id: mm.h,v 1.6 2004/06/02 03:09:37 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -37,7 +37,7 @@
  */
 #ifndef __MM_H
 #define __MM_H
-
+#include <sys/types.h>
 #include <assert.h>
 #include "mm_queue.h"
 
