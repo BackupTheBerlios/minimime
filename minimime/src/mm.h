@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.13 2004/06/09 09:45:23 jfi Exp $
+ * $Id: mm.h,v 1.14 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -32,11 +32,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** @file mm.h
- * Data definitions for MiniMIME
- */
-#ifndef __MM_H
-#define __MM_H
+#ifndef _MM_H_INCLUDED
+#define _MM_H_INCLUDED
+
 #include <sys/types.h>
 #include <assert.h>
 #include "mm_queue.h"
@@ -51,7 +49,7 @@ TAILQ_HEAD(mm_params, mm_param);
 SLIST_HEAD(mm_codecs, mm_codec);
 SLIST_HEAD(mm_warnings, mm_warning);
 
-/**
+/*
  * Parser modes
  */
 enum mm_parsemodes
@@ -62,7 +60,7 @@ enum mm_parsemodes
 	MM_PARSE_STRICT
 };
 
-/**
+/*
  * Available parser flags
  */
 enum mm_parseflags
@@ -71,7 +69,7 @@ enum mm_parseflags
 	MM_PARSE_STRIPCOMMENTS = (1L << 1)
 };
 
-/**
+/*
  * Enumeration of MIME encodings
  */
 enum mm_encoding
@@ -82,7 +80,7 @@ enum mm_encoding
 	MM_ENCODING_UNKNOWN
 };
 
-/**
+/*
  * Message type
  */
 enum mm_messagetype
@@ -93,7 +91,7 @@ enum mm_messagetype
 	MM_MSGTYPE_MULTIPART
 };
 
-/**
+/*
  * Enumeration of error categories
  */
 enum mm_errors
@@ -124,7 +122,14 @@ enum mm_addressfields {
 	MM_ADDR_REPLY_TO
 };
 
-/**
+enum mm_flatten_flags {
+	MM_FLATTEN_NONE = 0,
+	MM_FLATTEN_SKIPENVELOPE = (1L << 1),
+	MM_FLATTEN_OPAQUE = (1L << 2),
+	MM_FLATTEN_NOPREAMBLE = (1L << 3)
+};	
+
+/*
  * More information about an error
  */
 struct mm_error_data
@@ -134,178 +139,132 @@ struct mm_error_data
 	int lineno;
 	char error_msg[128];
 };
+
 extern int mm_errno;
 extern struct mm_error_data mm_error;
 
+enum mm_warning_code
+{
+	MM_WARNING_NONE = 0,
+	MM_WARNING_INVHDR,
+};
+
+/*
+ * A parser warning
+ */
 struct mm_warning
 {
-	char *message;
-	int type;
+	enum mm_warning_code warning;
+	u_int32_t lineno;
 	SLIST_ENTRY(mm_warning) next;
 };
 
-/**
+/*
  * Representation of a MiniMIME codec object
  */
 struct mm_codec
 {
-	/** Encoding associated with this object */
 	enum mm_encoding id;
-	/** Textual representation of the encoding */
 	char *encoding;
 
-	/** Pointer to the encoder callback function */
 	char *(*encoder)(char *, u_int32_t);
-	/** Pointer to the decoder callback function */
 	char *(*decoder)(char *);
 
-	/** Pointer to the next codec */
 	SLIST_ENTRY(mm_codec) next;
 };
 
-/**
+/*
  * Representation of a mail or MIME header field
  */
 struct mm_mimeheader
 {
-	/** Name of the header field */
 	char *name; 
-	/** Value of the header field */
 	char *value;
 
-	/** Pointer to the next header field */
 	TAILQ_ENTRY(mm_mimeheader) next;
 };
 
-/**
+/*
  * Representation of a MIME Content-Type parameter
  */
 struct mm_param
 {
-	/** Name of the parameter */
 	char *name; 
-	/** Value of the parameter */
 	char *value; 
 
 	TAILQ_ENTRY(mm_param) next;
 };
 
-/**
+/*
  * Representation of a MIME Content-Type object
  */
 struct mm_content
 {
-	/** Main type */
 	char *maintype;
-	/** Sub type */
 	char *subtype;
 
-	/** List of parameters attached to the Content-Type */
 	struct mm_params params;
 
-	/** String representing the encoding */
 	char *encstring;
-	/** MiniMIME representation of the encoding */
 	enum mm_encoding encoding;
 };
 
-/**
+/*
  * Representation of a MIME part 
  */
 struct mm_mimepart
 {
-	/** Mail headers of the MIME part */
 	struct mm_mimeheaders headers;
 	
-	/** Length of the MIME part (with headers) */
 	size_t opaque_length;
-	/** Part body's opaque representation (with headers) */
 	char *opaque_body;
 
-	/** Length of the MIME part (without headers) */
 	size_t length;
-	/** Part body's representation (without headers) */
 	char *body;
 
-	/** Content-Type object of the part */
 	struct mm_content *type;
-	
-	/** Content-Disposition type */
+
 	char *disposition_type;
-	/** Content-Disposition filename */
 	char *filename;
-	/** Content-Disposition creation-date */
 	char *creation_date;
-	/** Content-Disposition modification-date */
 	char *modification_date;
-	/** Content-Disposition read-date */
 	char *read_date;
-	/** Content-Disposition size */
 	char *disposition_size;
 	
-	/** Pointer to the next MIME part */
 	TAILQ_ENTRY(mm_mimepart) next;
 };
 
-/**
+/*
  * Represantation of a MiniMIME context
  */
 struct mm_context
 {
-	/** Linked list of MIME parts in this context */
 	struct mm_mimeparts parts;
-	/** Type of the message */
 	enum mm_messagetype messagetype;
-	/** Linked list of warnings for this context */
 	struct mm_warnings warnings;
-	/** Linked list of registered codecs */
 	struct mm_codecs codecs;
-	/** Boundary string */
 	char *boundary;
-	/** The preamble of the message */
 	char *preamble;
-	/** Maximum message size for parsing */
 	size_t max_message_size;
 };
+
 typedef struct mm_context MM_CTX;
 typedef struct mm_context mm_ctx_t;
 
-/**
- * @}
- */
- 
-/** @{
- * @name Utility functions
- */
 char *mm_unquote(const char *);
 char *mm_uncomment(const char *);
 char *mm_stripchars(char *, char *);
 char *mm_addchars(char *, char *, u_int16_t);
-char *mm_gendate(void);
+int mm_gendate(char **);
 void mm_striptrailing(char **, const char *);
-char *mm_mimeutil_genboundary(char *, size_t);
+int mm_mimeutil_genboundary(char *, size_t, char **);
 
-/**
- * @}
- * @{
- * @name Library initialization
- */
 int mm_library_init(void);
 int mm_library_isinitialized(void);
 
-/**
- * @}
- * @{
- * @name Parsing MIME messages
- */
 int mm_parse_mem(MM_CTX *, const char *, int, int);
 int mm_parse_file(MM_CTX *, const char *, int, int);
 
-/**
- * @}
- * @{
- * @name Manipulating MiniMIME contexts
- */
 MM_CTX *mm_context_new(void);
 void mm_context_free(MM_CTX *);
 int mm_context_attachpart(MM_CTX *, struct mm_mimepart *);
@@ -316,19 +275,9 @@ int mm_context_iscomposite(MM_CTX *);
 int mm_context_haswarnings(MM_CTX *);
 int mm_context_flatten(MM_CTX *, char **, size_t *, int);
 
-/**
- * @}
- * @{
- * @name Accessing a message's envelope
- */
 int mm_envelope_getheaders(MM_CTX *, char **, size_t *);
 int mm_envelope_setheader(MM_CTX *, const char *, const char *, ...);
 
-/**
- * @}
- * @{
- * @name Manipulating MIME headers
- */
 struct mm_mimeheader *mm_mimeheader_new(void);
 void mm_mimeheader_free(struct mm_mimeheader *);
 struct mm_mimeheader *mm_mimeheader_generate(const char *, const char *);
@@ -337,11 +286,6 @@ int mm_mimeheader_uncommentbyname(struct mm_mimepart *, const char *);
 int mm_mimeheader_uncommentall(struct mm_mimepart *);
 int mm_mimeheader_tostring(struct mm_mimeheader *);
 
-/**
- * @}
- * @{
- * @name Manipulating MIME parts
- */
 struct mm_mimepart *mm_mimepart_new(void);
 void mm_mimepart_free(struct mm_mimepart *);
 int mm_mimepart_attachheader(struct mm_mimepart *, struct mm_mimeheader *);
@@ -359,7 +303,6 @@ void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
 int mm_mimepart_setdefaultcontenttype(struct mm_mimepart *, int);
 int mm_mimepart_flatten(struct mm_mimepart *, char **, size_t *, int);
 struct mm_mimepart *mm_mimepart_fromfile(const char *);
-/** @} */
 
 struct mm_content *mm_content_new(void);
 void mm_content_free(struct mm_content *);
@@ -393,7 +336,6 @@ int mm_codec_unregister(const char *);
 int mm_codec_unregisterall(void);
 void mm_codec_registerdefaultcodecs(void);
 
-/* CODECS */
 char *mm_base64_decode(char *);
 char *mm_base64_encode(char *, u_int32_t);
 
@@ -417,4 +359,4 @@ size_t strlcat(char *, const char *, size_t);
 	assert(mm_library_isinitialized() == 1); \
 } while (0);
 
-#endif /* ! __MM_H */
+#endif /* ! _MM_H_INCLUDED */

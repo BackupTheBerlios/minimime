@@ -1,5 +1,5 @@
 /*
- * $Id: mm_internal.h,v 1.1 2004/05/03 22:06:00 jfi Exp $
+ * $Id: mm_internal.h,v 1.2 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -35,10 +35,17 @@
 /** @file mm_internal.h
  * Data definitions for MiniMIME
  */
-#ifndef __MM_INTERNAL_H
-#define __MM_INTERNAL_H
+#ifndef _MM_INTERNAL_H_INCLUDED
+#define _MM_INTERNAL_H_INCLUDED
 
 #include "mm.h"
+
+#define debugp(m, ...) do { \
+	fprintf(stderr, "%s:%d:: ", __FILE__, __LINE__); \
+	fprintf(stderr, m, ## __VA_ARGS__); \
+	fprintf(stderr, "\n"); \
+	fflush(stderr); \
+} while (0); 
 
 /**
  * @{ 
@@ -50,8 +57,9 @@ void *xrealloc(void *, size_t);
 void xfree(void *);
 char *xstrdup(const char *);
 #endif
+
 char *xstrsep(char **, const char *);
 
 /* THIS FILE IS INTENTIONALLY LEFT BLANK */
 
-#endif /* ! __MM_INTERNAL_H */
+#endif /* ! _MM_INTERNAL_H_INCLUDED */

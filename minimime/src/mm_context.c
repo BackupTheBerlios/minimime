@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.7 2004/06/09 09:45:23 jfi Exp $
+ * $Id: mm_context.c,v 1.8 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -103,7 +103,7 @@ void
 mm_context_free(MM_CTX *ctx)
 {
 	struct mm_mimepart *part;
-	struct mm_warning *warning;
+	struct mm_warning *warning, *nxt;
 	
 	assert(ctx != NULL);
 
@@ -122,13 +122,13 @@ mm_context_free(MM_CTX *ctx)
 		ctx->preamble = NULL;
 	}
 
-	SLIST_FOREACH(warning, &ctx->warnings, next) {
+	for (warning = SLIST_FIRST(&ctx->warnings); 
+	    warning != SLIST_END(&ctx->warnings);
+	    warning = nxt) {
+		nxt = SLIST_NEXT(warning, next);
 		SLIST_REMOVE(&ctx->warnings, warning, mm_warning, next);
-		if (warning->message != NULL) {
-			xfree(warning->message);
-			warning->message = NULL;
-		}
 		xfree(warning);
+		warning = NULL;
 	}
 
 	xfree(ctx);
@@ -349,10 +349,9 @@ mm_context_generateboundary(MM_CTX *ctx)
 	struct mm_mimepart *part;
 	struct mm_param *param;
 	
-	boundary = mm_mimeutil_genboundary("++MiniMIME++", 20);
-	if (boundary == NULL) {
+	if (mm_mimeutil_genboundary("++MiniMIME++", 20, &boundary) == -1) {
 		return(-1);
-	}
+	}	
 
 	if (ctx->boundary != NULL) {
 		xfree(ctx->boundary);
@@ -429,15 +428,19 @@ mm_context_getpreamble(MM_CTX *ctx)
  *
  * @param ctx A valid MiniMIME context object
  * @param flat Where to store the message
- * @param opaque Whether the MIME parts should be included opaque
+ * @param flags Flags that affect the flattening process
  *
  * This function ``flattens'' a MiniMIME context, that is, it creates an ASCII
- * represantation of the message the context contains.
+ * represantation of the message the context contains. The flags can be a
+ * bitwise combination of the following constants:
+ *
+ * - MM_FLATTEN_OPAQUE : use opaque MIME parts when flattening
+ * - MM_FLATTEN_SKIPENVELOPE : do not flatten the envelope part
  *
  * Great care is taken to not produce invalid MIME output.
  */
 int
-mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
+mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int flags)
 {
 	struct mm_mimepart *part;
 	char *message;
@@ -454,12 +457,24 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 	message = NULL;
 	message_size = 0;
 
-	if (ctx->boundary == NULL && mm_context_iscomposite(ctx)) {
-		mm_context_generateboundary(ctx);
+	if (ctx->boundary == NULL) {
+		if (mm_context_iscomposite(ctx)) {
+			mm_context_generateboundary(ctx);
+		}
 	}
 
 	TAILQ_FOREACH(part, &ctx->parts, next) {
 		if (envelope) {
+			if (flags & MM_FLATTEN_SKIPENVELOPE) {
+				envelope = 0;
+				if ((message = (char *) malloc(1)) == NULL) {
+					mm_errno = MM_ERROR_ERRNO;
+					goto cleanup;
+				}
+				*message = '\0';
+				continue;
+			}
+	
 			if (part->type == NULL && mm_context_countparts(ctx) > 1) {
 				if (mm_mimepart_setdefaultcontenttype(part, 1) 
 				    == -1) {
@@ -480,7 +495,9 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 			message_size = tmp_size;
 			envelope = 0;
 
-			if (ctx->preamble != NULL && mm_context_iscomposite(ctx)) {
+			if (ctx->preamble != NULL 
+			    && mm_context_iscomposite(ctx) 
+			    && !(flags & MM_FLATTEN_NOPREAMBLE)) {
 				tmp_size += strlen(ctx->preamble) 
 				    + (strlen("\r\n") * 2);
 				buf = (char *)xrealloc(message, tmp_size);
@@ -528,7 +545,7 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 			}
 
 			if (mm_mimepart_flatten(part, &flatpart, &tmp_size, 
-			    opaque) == -1) {
+			    (flags & MM_FLATTEN_OPAQUE)) == -1) {
 				goto cleanup;
 			}
 			

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mem.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_mem.c,v 1.2 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -66,7 +66,7 @@ MM_malloc(size_t size, char *filename, int line)
 	chunk->filename = filename;
 	chunk->line = line;
 
-	SLIST_INSERT_HEAD(&chunks, chunk, next);
+	TAILQ_INSERT_TAIL(&chunks, chunk, next);
 
 	return pointer;
 }
@@ -79,7 +79,7 @@ MM_strdup(const char *s, char *filename, int line)
 	r = (char *)MM_malloc(strlen(s)+1, filename, line);
 	strlcpy(r, s, strlen(s) + 1);
 	if (strlen(r) != strlen(s)) {
-		warnx("%d:%d", strlen(s), strlen(r));
+		debugp("%d:%d", strlen(s), strlen(r));
 	}
 	return r;
 
@@ -99,14 +99,15 @@ MM_realloc(void *p, size_t new_size, char *filename, int line)
 
 	assert(new_size > 0);
 
-	SLIST_FOREACH(chunk, &chunks, next) {
+	TAILQ_FOREACH(chunk, &chunks, next) {
 		if (chunk->address == p) {
 			last = chunk;
 		}
 	}
 
 	if (last == NULL) {
-		warnx("MM_realloc: did not find chunk at %p (%s:%d), creating new", p, filename, line);
+		debugp("MM_realloc: did not find chunk at %p (%s:%d) "
+		    ", creating new", p, filename, line);
 		return MM_malloc(new_size, filename, line);
 	}
 
@@ -125,24 +126,28 @@ MM_realloc(void *p, size_t new_size, char *filename, int line)
 void
 MM_free(void *pointer, char *filename, int line, char *name)
 {
-	struct MM_mem_chunk *chunk;
+	struct MM_mem_chunk *chunk, *nxt;
 
-	SLIST_FOREACH(chunk, &chunks, next) {
+	for (chunk = TAILQ_FIRST(&chunks); chunk != TAILQ_END(&chunks);
+	    chunk = nxt) {
+		nxt = TAILQ_NEXT(&chunks, next);
 		if (chunk->address == pointer) {
-			SLIST_REMOVE(&chunks, chunk, MM_mem_chunk, next);
+			TAILQ_REMOVE(&chunks, chunk, next);
 			free(chunk->address);
 			free(chunk);
 			return;
 		}
 	}
-	warnx("FREE: did not find storage %s (at %p), %s:%d", name, pointer, filename, line);
+
+	debugp("FREE: did not find storage %s (at %p), %s:%d", name, pointer,
+	    filename, line);
 }
 
 void
 MM_leakd_flush(void)
 {
-	warnx("flushing memory informations");
-	while (!SLIST_EMPTY(&chunks))
+	debugp("flushing memory informations");
+	while (!TAILQ_EMPTY(&chunks))
 		SLIST_REMOVE_HEAD(&chunks, next);
 }
 
@@ -150,16 +155,17 @@ void
 MM_leakd_printallocated(void)
 {
 	struct MM_mem_chunk *chunk;
-	warnx("MM: printing dynamic memory allocations");
-	SLIST_FOREACH(chunk, &chunks, next) {
-		fprintf(stderr, " chunk: %p (alloc'ed at %s:%d, size %d)\n", chunk->address, chunk->filename, chunk->line, chunk->size);
+	debugp("printing dynamic memory allocations");
+	TAILQ_FOREACH(chunk, &chunks, next) {
+		debugp(" chunk: %p (alloc'ed at %s:%d, size %d)\n", 
+		    chunk->address, chunk->filename, chunk->line, chunk->size);
 	}
 }
 
 void
 MM_leakd_init(void)
 {
-	SLIST_INIT(&chunks);
+	TAILQ_INIT(&chunks);
 }
 
 #endif /* !__HAVE_LEAK_DETECTOR */

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_parse.c,v 1.6 2004/06/07 14:11:02 jfi Exp $
+ * $Id: mm_parse.c,v 1.7 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -44,8 +44,8 @@
 #include "mm_internal.h"
 #include "mm_util.h"
 
-#include "parser.h"
-#include "y.tab.h"
+#include "mimeparser.h"
+#include "mimeparser.tab.h"
 
 void PARSER_initialize(MM_CTX *, int);
 void PARSER_setbuffer(const char *);
@@ -87,7 +87,7 @@ mm_parse_mem(MM_CTX *ctx, const char *text, int parsemode, int flags)
 	PARSER_setbuffer(text);
 	PARSER_setfp(NULL);
 	
-	return mm_yyparse();
+	return mimeparser_yyparse();
 }
 
 /**
@@ -126,5 +126,5 @@ mm_parse_file(MM_CTX *ctx, const char *filename, int parsemode, int flags)
 	PARSER_setfp(fp);
 	PARSER_initialize(ctx, parsemode);
 
-	return mm_yyparse();
+	return mimeparser_yyparse();
 }

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.6 2004/06/09 09:45:23 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.7 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -442,17 +442,17 @@ mm_mimepart_getbody(struct mm_mimepart *part, int opaque)
  * operation. 
  */
 void
-mm_mimepart_setbody(struct mm_mimepart *part, const char *data)
+mm_mimepart_setbody(struct mm_mimepart *part, const char *data, int opaque)
 {
 	assert(part != NULL);
 	assert(data != NULL);
 
-	if (part->body != NULL) {
-		xfree(part->body);
-		part->body = NULL;
+	if (opaque) {
+		part->opaque_body = xstrdup(data);
+		part->body = part->opaque_body;
+	} else {	
+		part->body = xstrdup(data);
 	}
-
-	part->body = xstrdup(data);
 	part->length = strlen(data);
 }
 
@@ -545,7 +545,7 @@ mm_mimepart_flatten(struct mm_mimepart *part, char **result, size_t *length,
 	ct_hdr = NULL;
 	part_length = 0;
 
-	if (opaque) {
+	if (opaque && part->opaque_body != NULL) {
 		part_length = strlen(part->opaque_body);
 		*result = xstrdup(part->opaque_body);
 		*length = part_length;

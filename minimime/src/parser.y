@@ -43,7 +43,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "parser.h"
+#include "mimeparser.h"
 #include "mm.h"
 #include "mm_internal.h"
 
@@ -59,7 +59,7 @@ extern FILE *mm_yyin;
 FILE *curin;
 
 static int mime_parts = 0;
-static int debug = 1;
+static int debug = 0;
 
 /* MiniMIME specific object pointers */
 static MM_CTX *ctx;
@@ -255,7 +255,9 @@ header	:
 			mm_error_setmsg("invalid header encountered");
 			mm_error_setlineno(lineno);
 			return(-1);
-		}	
+		} else {
+			/* TODO: attach MM_WARNING_INVHDR */
+		}
 	}
 	;
 
@@ -276,6 +278,8 @@ mail_header:
 			mm_error_setmsg("invalid header encountered");
 			mm_error_setlineno(lineno);
 			return(-1);
+		} else {
+			/* TODO: attach MM_WARNING_INVHDR */
 		}	
 		
 		hdr = mm_mimeheader_generate($1, xstrdup(""));
@@ -329,7 +333,9 @@ content_disposition:
 				mm_error_setmsg("invalid content-disposition");
 				return(-1);
 			}	
-		}
+		} else {
+			/* TODO: attach MM_WARNING_INVHDR */
+		}	
 		$$ = $1;
 	}
 	;
@@ -379,7 +385,9 @@ contenttype_parameters:
 			mm_error_setmsg("invalid Content-Type header");
 			mm_error_setlineno(lineno);
 			return(-1);
-		}		
+		} else {
+			/* TODO: attach MM_WARNING_INVHDR */
+		}	
 	}
 	;
 
@@ -395,7 +403,9 @@ content_disposition_parameters:
 			mm_error_setmsg("invalid Content-Disposition header");
 			mm_error_setlineno(lineno);
 			return(-1);
-		}		
+		} else {
+			/* TODO: attach MM_WARNING_INVHDR */
+		}
 	}	
 	;
 
@@ -417,6 +427,8 @@ contenttype_parameter:
 					mm_error_setmsg("duplicate boundary "
 					    "found");
 					return -1;
+				} else {
+					/* TODO: attach MM_WARNING_DUPPARAM */
 				}
 			}
 		}
@@ -452,7 +464,9 @@ content_disposition_parameter:
 				mm_error_setmsg("invalid disposition "
 				    "parameter");
 				return -1;
-			}
+			} else {
+				/* TODO: attach MM_WARNING_INVPARAM */
+			}	
 		}	
 	}
 	;
@@ -471,6 +485,8 @@ contenttype_parameter_value:
 			mm_error_setmsg("tspecial without quotes");
 			mm_error_setlineno(lineno);
 			return(-1);
+		} else {
+			/* TODO: attach MM_WARNING_INVAL */
 		}	
 		$$ = $1;
 	}
@@ -654,7 +670,7 @@ mm_yywrap(void)
 	return 1;
 }
 
-/**
+/*
  * Sets the boundary value for the current message
  */
 int 

@@ -9,14 +9,15 @@
 #define xstrdup(x) MM_strdup(x, __FILE__, __LINE__)
 #define xrealloc(x, y) MM_realloc(x, y, __FILE__, __LINE__)
 
-SLIST_HEAD(MM_chunks, MM_mem_chunk);
+TAILQ_HEAD(MM_chunks, MM_mem_chunk);
 
 struct MM_mem_chunk {
 	void *address;
 	const char *filename;
 	u_int32_t line;
 	size_t size;
-	SLIST_ENTRY(MM_mem_chunk) next;
+	
+	TAILQ_ENTRY(MM_mem_chunk) next;
 };
 
 void *MM_malloc(size_t, char *, int);

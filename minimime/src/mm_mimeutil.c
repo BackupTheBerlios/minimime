@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimeutil.c,v 1.2 2004/06/09 09:45:23 jfi Exp $
+ * $Id: mm_mimeutil.c,v 1.3 2004/06/24 07:25:34 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -40,6 +40,8 @@
 
 #include "mm_internal.h"
 
+#define MM_DATE_LENGTH 50
+
 static const char boundary_charset[] = 
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.=";
 
@@ -66,34 +68,42 @@ static const char boundary_charset[] =
  * This function dynamically allocates memory and returns a pointer to it.
  * This memory should be released with free() once not needed anymore.
  */
-char *
-mm_mimeutil_gendate(void)
+int
+mm_mimeutil_gendate(char **result)
 {
 	time_t curtime;
 	struct tm *curtm;
-	char buf[50];
 	
-	curtime = time(NULL);
-	curtm = localtime(&curtime);
-
-	strftime(buf, sizeof buf, "%a, %d %b %G %T %z (%Z)", curtm);
-
-	return xstrdup(buf);
+	if (result != NULL) {
+		curtime = time(NULL);
+		curtm = localtime(&curtime);
+		if ((*result = (char *) malloc(MM_DATE_LENGTH)) == NULL) {
+			return(-1);
+		}	
+		return(strftime(*result, MM_DATE_LENGTH, 
+		    "%a, %d %b %G %T %z (%Z)", curtm));
+	} else {
+		return(-1);
+	}	
 }
 
 
-char *
-mm_mimeutil_genboundary(char *prefix, size_t length)
+int
+mm_mimeutil_genboundary(char *prefix, size_t length, char **result)
 {
-	char *buf;
 	size_t total;
 	size_t preflen;
 	struct timeval curtm;
 	int i;
+	int pos;
 
 	total = 0;
-	buf = NULL;
 	preflen = 0;
+
+	if (result == NULL) {
+		return(-1);
+	}	
+	*result = NULL;
 
 	gettimeofday(&curtm, NULL);
 	srandom(curtm.tv_usec);
@@ -105,24 +115,22 @@ mm_mimeutil_genboundary(char *prefix, size_t length)
 
 	total += length;
 
-	buf = (char *) xmalloc(total + 1);
-	if (buf == NULL) {
-		return(NULL);
-	}
+	if ((*result = (char *) xmalloc(total + 1)) == NULL) {
+		mm_errno = MM_ERROR_ERRNO;
+		return(-1);
+	}	
 
-	*buf = '\0';
+	*result = '\0';
 
 	if (prefix != NULL) {
-		strlcat(buf, prefix, total);
+		strlcat(*result, prefix, total);
 	}
 
 	for (i = 0; i < length - 1; i++) {
-		int pos;
-		
 		pos = random() % strlen(boundary_charset);
-		buf[i + preflen] = boundary_charset[pos];
+		*result[i + preflen] = boundary_charset[pos];
 	}
-	buf[total] = '\0';
+	*result[total] = '\0';
 
-	return buf;
+	return (0);
 }

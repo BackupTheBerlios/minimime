@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.8 2004/06/09 09:45:23 jfi Exp $
+# $Id: Makefile,v 1.9 2004/06/24 07:25:34 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -8,8 +8,8 @@ YACC?=yacc
 FLEX?=flex
 DEFINES?=
 SRCS= \
-	y.tab.c \
-	lex.mm_yy.c \
+	mimeparser.tab.c \
+	mimeparser.yy.c \
 	mm_init.c \
 	mm_base64.c \
 	mm_codecs.c \
@@ -24,9 +24,8 @@ SRCS= \
 	mm_param.c \
 	mm_parse.c \
 	mm_util.c \
-	mm_warnings.c
 
-HAVE_DEBUG?=0	
+HAVE_DEBUG?=1
 
 .if !$(HAVE_STRLCAT)
 SRCS+= strlcat.c
@@ -57,7 +56,7 @@ SRCS+= minimime.c
 #DEFINES+= -D__HAVE_LEAK_DETECTION
 #DEFINES+= -DMM_DEBUG
 
-CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES) -ansi -pedantic
+CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES)
 LDFLAGS?=
 LIBS?=
 OBJS=$(SRCS:.c=.o)
@@ -90,13 +89,13 @@ $(ARNAME): $(OBJS)
 minimime: $(LIBNAME) minimime.o
 	$(CC) -o $(TARGET) minimime.o -L. -lmmime
 
-lex.mm_yy.o: parser.l
-	$(FLEX) -Pmm_yy parser.l
-	$(CC) -c $(CFLAGS) -Wno-unused lex.mm_yy.c
+mimeparser.yy.o: mimeparser.l
+	$(FLEX) -Pmimeparser_yy -omimeparser.yy.c mimeparser.l
+	$(CC) -c $(CFLAGS) -Wno-unused mimeparser.yy.c
 
-y.tab.o: parser.y
-	$(YACC) -d -pmm_yy parser.y
-	$(CC) -c $(CFLAGS) -Wno-unused y.tab.c
+mimeparser.tab.o: mimeparser.y
+	$(YACC) -d -pmimeparser_yy -omimeparser.tab.c mimeparser.y
+	$(CC) -c $(CFLAGS) -Wno-unused mimeparser.tab.c
 
 test: $(LIBNAME)
 	@cd tests && make
@@ -104,15 +103,15 @@ test: $(LIBNAME)
 	@echo Running testsuite for libminimime...
 	@echo "****************************************************************"
 	@export LD_LIBRARY_PATH=$(.CURDIR)/src
-	@./test.sh
+	@cd tests && ./test.sh
 
 install: $(LIBNAME)
 	test -d $(PREFIX) || mkdir -p $(PREFIX)
 	install -m 644 -o root -g 0 -c $(LIBNAME) /usr/local/lib
 
 clean:
-	rm -f lex.mm_yy.c
-	rm -f y.tab.*
+	rm -f *.yy.c
+	rm -f *.tab.*
 	rm -f *.o
 	rm -f *.core
 	rm -f $(TARGET)

@@ -216,16 +216,6 @@ main(int argc, char **argv)
 			}
 		}
 		
-		/* Print out all warnings that we might have received */
-		if (mm_context_haswarnings(ctx) > 0) {
-			lastwarning = NULL;
-			fprintf(stderr, "WARNINGS:\n");
-			while ((warning = mm_warning_next(ctx, &lastwarning)) 
-			    != NULL) {
-				fprintf(stderr, " -> %s\n", warning->message);
-			}
-		}
-
 		printf("RECONSTRUCTED MESSAGE:\n");
 
 		do {
