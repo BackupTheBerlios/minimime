@@ -337,13 +337,14 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 
 <body><<EOF>> {
 	if (boundary_string == NULL && body_start) {
-		printf("B\n");
 		mm_yylval.position.opaque_start = 0;
 		mm_yylval.position.start = body_start;
 		mm_yylval.position.end = current_pos;
 		body_start = 0;
 		return BODY;
-	} 
+	} else if (body_start) {
+		return POSTAMBLE;
+	}	
 	yyterminate();
 }	
 
@@ -390,6 +391,15 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 	lineno++;
 	current_pos += yyleng;
 }
+
+<postamble>.+ {
+	current_pos += yyleng;
+}
+
+<postamble>(\r\n|\n) {
+	lineno++;
+	current_pos += yyleng;
+}	
 
 \n {
 	lineno++;

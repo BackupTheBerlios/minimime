@@ -1,5 +1,5 @@
 /*
- * $Id: mm_error.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_error.c,v 1.2 2004/06/04 09:35:50 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -62,6 +62,7 @@ mm_error_init(void)
 {
 	mm_error.error_id = 0;
 	mm_error.error_where = 0;
+	mm_error.lineno = 0;
 	memset(&mm_error.error_msg, '\0', sizeof(mm_error.error_msg));
 }
 
@@ -83,6 +84,12 @@ mm_error_setmsg(const char *fmt, ...)
 	vsnprintf(mm_error.error_msg, sizeof(mm_error.error_msg), fmt, ap);
 	va_end(ap);
 
+}
+
+void
+mm_error_setlineno(int lineno)
+{
+	mm_error.lineno = lineno;
 }
 
 /**
@@ -107,4 +114,10 @@ mm_error_string(void)
 	} else {
 		return mm_error.error_msg;
 	}
+}
+
+int
+mm_error_lineno(void)
+{
+	return mm_error.lineno;
 }

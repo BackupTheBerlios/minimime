@@ -105,6 +105,7 @@ static int have_contenttype;
 
 %token <position> BODY
 %token <position> PREAMBLE
+%token <position> POSTAMBLE
 
 %type  <string> content_parameter_value
 %type  <string> mimetype
@@ -130,7 +131,7 @@ multipart_message:
 		current_mimepart = mm_mimepart_new();
 		have_contenttype = 0;
 	}
-	mimeparts endboundary
+	mimeparts endboundary postamble
 	{
 		dprintf("This was a multipart message\n");
 	}
@@ -170,6 +171,13 @@ preamble:
 	PREAMBLE
 	{
 		//printf("PREAMBLE: (%d/%d)\n", $1.start, $1.end);
+	}
+	|
+	;
+
+postamble:
+	POSTAMBLE
+	{
 	}
 	|
 	;
@@ -475,6 +483,7 @@ mm_yyerror(const char *str)
 {
 	mm_errno = MM_ERROR_PARSE;
 	mm_error_setmsg("%s", str);
+	mm_error_setlineno(lineno);
 	return -1;
 }
 
