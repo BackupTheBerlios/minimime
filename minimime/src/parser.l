@@ -106,6 +106,7 @@ size_t postamble_end = 0;
 
 STRING	[a-zA-Z0-9\-\.\_]
 TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
+TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 
 %%
 
@@ -226,7 +227,7 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 	return *yytext;
 }
 
-<headervalue>{STRING}+ {
+<headervalue>{STRING}+|{TSPECIAL_LITE}+ {
 	dprintf("W: %s\n", yytext);
 	mm_yylval.string=strdup(yytext);
 	lineno += count_lines(yytext);
