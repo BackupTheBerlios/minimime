@@ -150,7 +150,6 @@ headers :
 		 */
 		struct mm_content *ct;
 		if (!have_contenttype) {
-			fprintf(stderr, "ATTACHING CONTENT TYPE GENERATED!!!\n");
 			ct = mm_content_new();
 			mm_content_settype(ct, "text/plain");
 			mm_mimepart_attachcontenttype(current_mimepart, ct);
@@ -178,10 +177,10 @@ mimeparts:
 mimepart:
 	boundary headers body
 	{
-		dprintf("NEW MIME PART (YACC) at %d\n", lineno);
 
 		if (mm_context_attachpart(ctx, current_mimepart) == -1) {
-			dprintf("ERROR ATTACHING MIME PART!\n");
+			mm_errno = MM_ERROR_ERRNO;
+			return(-1);
 		}	
 
 		tmppart = mm_mimepart_new();
@@ -196,6 +195,11 @@ header	:
 	contenttype_header
 	{
 		have_contenttype = 1;
+		if (mm_content_iscomposite(envelope->type)) {
+			ctx->messagetype = MM_MSGTYPE_MULTIPART;
+		} else {
+			ctx->messagetype = MM_MSGTYPE_FLAT;
+		}	
 	}
 	|
 	contentdisposition_header
@@ -347,13 +351,14 @@ boundary	:
 	BOUNDARY EOL
 	{
 		if (boundary_string == NULL) {
-			return(0);
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("internal incosistency");
+			return(-1);
 		}
 		if (strcmp(boundary_string, $1)) {
-			yyerror("invalid middle boundary");
-			fprintf(stderr, "IS: %s\n", $1);
-			fprintf(stderr, "SHOULD: %s\n", boundary_string);
-			exit(1);
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("invalid boundary: %s", $1);
+			return(-1);
 		}
 		dprintf("New MIME part... (%s)\n", $1);
 	}
@@ -363,10 +368,14 @@ endboundary	:
 	ENDBOUNDARY
 	{
 		if (endboundary_string == NULL) {
-			return(0);
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("internal incosistency");
+			return(-1);
 		}
 		if (strcmp(endboundary_string, $1)) {
-			return(0);
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("invalid end boundary: %s", $1);
+			return(-1);
 		}
 		dprintf("End of MIME message\n");
 	}
@@ -375,29 +384,57 @@ endboundary	:
 body:
 	BODY
 	{
-		size_t body_size, current;
+		size_t body_size;
+		size_t current;
+		size_t start;
+		size_t offset;
 		char *body;
 
 		dprintf("BODY (%d/%d), SIZE %d\n", $1.start, $1.end, $1.end - $1.start);
 
-		/* The next two cases should usually NOT happen */
-		if ($1.end <= $1.start) {
-			return(0);
+		/* calculate start and offset markers for the opaque and
+		 * header stripped body message.
+		 */
+		if ($1.opaque_start > 0) {
+			if ($1.start < $1.opaque_start) {
+				mm_errno = MM_ERROR_PARSE;
+				mm_error_setmsg("internal incosistency,1");
+				return(-1);
+			}
+			start = $1.opaque_start;
+			offset = $1.start - start;
+			//assert(offset < 0);
+		} else {
+			start = $1.start;
+			offset = 0;
 		}
 
-		if ($1.start < 0 || $1.end < 0) {
-			return(0);
+		/* The next three cases should NOT happen anytime */
+		if ($1.end <= start) {
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("internal incosistency,2");
+			return(-1);
+		}
+		if (start < offset) {
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("internal incosistency, S:%d,O:%d,L:%d", start, offset, lineno);
+			return(-1);
+		}	
+		if (start < 0 || $1.end < 0) {
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("internal incosistency,4");
+			return(-1);
 		}	
 
 		/* XXX: do we want to enforce a maximum body size? make it a
 		 * parser option? */
 
 		/* Read in the body message */
-		body_size = $1.end - $1.start;
+		body_size = $1.end - start;
 		body = (char *)malloc(body_size + 1);
 		if (body == NULL) {
 			mm_errno = MM_ERROR_ERRNO;
-			return(0);
+			return(-1);
 		}	
 		
 		/* Get the message body either from a stream or a memory
@@ -405,15 +442,15 @@ body:
 		 */
 		if (mm_yyin != NULL) {
 			current = ftell(curin);
-			fseek(curin, $1.start - 1, SEEK_SET);
+			fseek(curin, start - 1, SEEK_SET);
 			fread(body, body_size - 1, 1, curin);
 			fseek(curin, current, SEEK_SET);
 		} else if (message_buffer != NULL) {
-			strlcpy(body, message_buffer + $1.start - 1, body_size);
+			strlcpy(body, message_buffer + start - 1, body_size);
 		} 
 
-		current_mimepart->body = body;
-
+		current_mimepart->opaque_body = body;
+		current_mimepart->body = body + offset;
 	}
 	;
 

@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.4 2004/06/01 09:39:48 jfi Exp $
+ * $Id: mm.h,v 1.5 2004/06/02 01:55:52 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -178,6 +178,7 @@ struct mm_mimepart
 {
 	struct mm_mimeheaders headers;
 	char *copy;
+	char *opaque_body;
 	char *body;
 	size_t length;
 	struct mm_content *type;

@@ -269,8 +269,11 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 			current_pos += yyleng;
 			dprintf("YYTEXT == end_boundary: '%s'\n", yytext);
 			if (body_start) {
+				mm_yylval.position.opaque_start = 
+				    body_opaque_start;
 				mm_yylval.position.start = body_start;
 				mm_yylval.position.end = current_pos - yyleng;
+				body_opaque_start = 0;
 				body_start = 0;
 				body_end = 0;
 				yyless(0);
@@ -298,6 +301,7 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 				mm_yylval.position.opaque_start = body_opaque_start;
 				mm_yylval.position.start = body_start;
 				mm_yylval.position.end = current_pos;
+				body_opaque_start = 0;
 				body_start = 0;
 				body_end = 0;
 				yyless(0);
@@ -314,7 +318,6 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 				BC(boundary);
 				mm_yylval.string = strdup(yytext);
 				current_pos += yyleng;
-				body_opaque_start = current_pos;
 				return(BOUNDARY);
 			}
 		}
@@ -367,6 +370,7 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 	lineno++;
 	dprintf("Boundary end of line\n");
 	current_pos += yyleng;
+	body_opaque_start = current_pos;
 	return EOL;
 }
 

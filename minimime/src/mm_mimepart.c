@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.2 2004/06/02 01:55:52 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -65,6 +65,7 @@ mm_mimepart_new(void)
 	SLIST_INIT(&part->headers);
 
 	part->copy = NULL;
+	part->opaque_body = NULL;
 	part->body = NULL;
 	part->length = 0;
 	part->type = NULL;
@@ -145,7 +146,11 @@ mm_mimepart_free(struct mm_mimepart *part)
 		part->copy = NULL;
 	}
 
-	if (part->body != NULL) {
+	if (part->opaque_body != NULL) {
+		xfree(part->opaque_body);
+		part->opaque_body = NULL;
+		part->body = NULL;
+	} else if (part->body != NULL) {
 		xfree(part->body);
 		part->body = NULL;
 	}

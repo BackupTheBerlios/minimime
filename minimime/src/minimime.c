@@ -191,7 +191,7 @@ main(int argc, char **argv)
 			}
 
 			/* Print MIME part body */
-			printf("\nPrinting message BODY:\n%s\n", (char *)part->body);
+			printf("\nPrinting message BODY:\n%s\n", (char *)part->opaque_body);
 			decoded = mm_mimepart_decode(part);
 			if (decoded != NULL) {
 				printf("DECODED:\n%s\n", decoded);
