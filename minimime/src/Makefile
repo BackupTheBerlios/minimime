@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.6 2004/06/07 14:11:02 jfi Exp $
+# $Id: Makefile,v 1.7 2004/06/08 09:53:02 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -57,7 +57,7 @@ SRCS+= minimime.c
 #DEFINES+= -D__HAVE_LEAK_DETECTION
 #DEFINES+= -DMM_DEBUG
 
-CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES)
+CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES) -ansi -pedantic
 LDFLAGS?=
 LIBS?=
 OBJS=$(SRCS:.c=.o)
@@ -92,11 +92,11 @@ minimime: $(LIBNAME) minimime.o
 
 lex.mm_yy.o: parser.l
 	$(FLEX) -Pmm_yy parser.l
-	$(CC) -c $(CFLAGS) lex.mm_yy.c
+	$(CC) -c $(CFLAGS) -Wno-unused lex.mm_yy.c
 
 y.tab.o: parser.y
 	$(YACC) -d -pmm_yy parser.y
-	$(CC) -c $(CFLAGS) y.tab.c
+	$(CC) -c $(CFLAGS) -Wno-unused y.tab.c
 
 test: minimime 
 	@echo "****************************************************************"

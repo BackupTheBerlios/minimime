@@ -62,7 +62,7 @@ enum header_states
 	STATE_CTYPE,
 	STATE_CDISP,
 	STATE_CENC,
-	STATE_MIME,
+	STATE_MIME
 };
 
 int header_state = STATE_MAIL;

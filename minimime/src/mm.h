@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.11 2004/06/07 14:11:02 jfi Exp $
+ * $Id: mm.h,v 1.12 2004/06/08 09:53:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -67,7 +67,7 @@ enum mm_parsemodes
 enum mm_parseflags
 {
 	MM_PARSE_NONE = (1L << 0),
-	MM_PARSE_STRIPCOMMENTS = (1L << 1),
+	MM_PARSE_STRIPCOMMENTS = (1L << 1)
 };
 
 /**
@@ -78,7 +78,7 @@ enum mm_encoding
 	MM_ENCODING_NONE = 0,
 	MM_ENCODING_BASE64,
 	MM_ENCODING_QUOTEDPRINTABLE,
-	MM_ENCODING_UNKNOWN,
+	MM_ENCODING_UNKNOWN
 };
 
 /**
@@ -89,7 +89,7 @@ enum mm_messagetype
 	/** Flat message */
 	MM_MSGTYPE_FLAT = 0,
 	/** Composite message */
-	MM_MSGTYPE_MULTIPART,
+	MM_MSGTYPE_MULTIPART
 };
 
 /**
@@ -111,7 +111,7 @@ enum mm_warning_ids
 	MM_WARN_NONE = 0,
 	MM_WARN_PARSE,
 	MM_WARN_MIME,
-	MM_WARN_CODEC,
+	MM_WARN_CODEC
 };
 
 enum mm_addressfields {
@@ -263,6 +263,8 @@ struct mm_context
 	char *boundary;
 	/** The preamble of the message */
 	char *preamble;
+	/** Maximum message size for parsing */
+	size_t max_message_size;
 };
 typedef struct mm_context MM_CTX;
 typedef struct mm_context mm_ctx_t;
@@ -279,7 +281,7 @@ char *mm_uncomment(const char *);
 char *mm_stripchars(char *, char *);
 char *mm_addchars(char *, char *, u_int16_t);
 char *mm_gendate(void);
-inline void mm_striptrailing(char **, const char *);
+void mm_striptrailing(char **, const char *);
 char *mm_mimeutil_genboundary(char *, size_t);
 
 /**
@@ -356,6 +358,7 @@ void mm_content_free(struct mm_content *);
 int mm_content_attachparam(struct mm_content *, struct mm_param *);
 struct mm_content *mm_content_parse(const char *, int);
 char *mm_content_getparambyname(struct mm_content *, const char *);
+struct mm_param *mm_content_getparamobjbyname(struct mm_content *, const char *);
 int mm_content_setmaintype(struct mm_content *, char *, int);
 int mm_content_setsubtype(struct mm_content *, char *, int);
 int mm_content_settype(struct mm_content *, const char *, ...);

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_contenttype.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
+ * $Id: mm_contenttype.c,v 1.5 2004/06/08 09:53:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -306,6 +306,22 @@ mm_content_getparambyname(struct mm_content *ct, const char *name)
 	TAILQ_FOREACH(param, &ct->params, next) {
 		if (!strcasecmp(param->name, name)) {
 			return param->value;
+		}
+	}
+
+	return NULL;
+}
+
+struct mm_param *
+mm_content_getparamobjbyname(struct mm_content *ct, const char *name)
+{
+	struct mm_param *param;
+
+	assert(ct != NULL);
+	
+	TAILQ_FOREACH(param, &ct->params, next) {
+		if (!strcasecmp(param->name, name)) {
+			return param;
 		}
 	}
 

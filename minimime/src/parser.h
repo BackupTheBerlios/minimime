@@ -10,7 +10,6 @@ int 	dprintf(const char *, ...);
 int 	mm_yyparse(void);
 int 	mm_yylex(void);
 int	mm_yyerror(const char *);
-//int	PARSER_initialize(MM_CTX *);
 
 struct s_position
 {

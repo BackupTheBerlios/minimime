@@ -1,5 +1,5 @@
 /*
- * $Id: mm_util.c,v 1.2 2004/06/07 14:11:02 jfi Exp $
+ * $Id: mm_util.c,v 1.3 2004/06/08 09:53:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -179,16 +179,10 @@ mm_uncomment(const char *string)
 		if (*buf == '(') {
 			open++;
 			new_size--;
-			//if (*(buf - 1) == ' ') {
-			//	new_size--;
-			//}
 			found++;
 		} else if (*buf == ')') {
 			open--;
 			new_size--;
-			//if (*(buf + 1) == ' ') {
-			//	new_size--;
-			//}
 		} else {
 			if (open)
 				new_size--;
@@ -396,7 +390,7 @@ mm_addchars(char *input, char *add, u_int16_t linelength)
 	return(orig);
 }
 
-inline void
+void
 mm_striptrailing(char **what, const char *charset)
 {
 	size_t eos, i, hit; 

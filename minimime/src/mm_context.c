@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.5 2004/06/07 14:11:02 jfi Exp $
+ * $Id: mm_context.c,v 1.6 2004/06/08 09:53:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -311,6 +311,12 @@ mm_context_iscomposite(MM_CTX *ctx)
 	}
 }
 
+/**
+ * Checks whether there are any warnings associated with a given context
+ *
+ * @param ctx A valid MiniMIME context
+ * @return 1 if there are warnings associated with the context, otherwise 0
+ */
 int
 mm_context_haswarnings(MM_CTX *ctx)
 {
@@ -321,10 +327,57 @@ mm_context_haswarnings(MM_CTX *ctx)
 	}
 }
 
-char *
+/**
+ * Generates a generic boundary string for a given context
+ *
+ * @param ctx A valid MiniMIME context
+ * @return 0 on success or -1 on failure
+ *
+ * This function generates a default boundary string for the given context.
+ * If there is already a boundary for the context, the memory will be free()'d.
+ */
+int
 mm_context_generateboundary(MM_CTX *ctx)
 {
-	return mm_mimeutil_genboundary("++MiniMIME++", 20);
+	char *boundary;
+	struct mm_mimepart *part;
+	struct mm_param *param;
+	
+	boundary = mm_mimeutil_genboundary("++MiniMIME++", 20);
+	if (boundary == NULL) {
+		return(-1);
+	}
+
+	if (ctx->boundary != NULL) {
+		xfree(ctx->boundary);
+		ctx->boundary = NULL;
+	}
+	
+	/* If we already have an envelope, make sure that we also justify the
+	 * "boundary" parameter of the envelope.
+	 */
+	part = mm_context_getpart(ctx, 0);
+	if (part == NULL) {
+		return(0);
+	}
+	if (part->type != NULL) {
+		param = mm_content_getparamobjbyname(part->type, "boundary");
+		if (param == NULL) {
+			param = mm_param_new();
+			param->name = xstrdup("boundary");
+			param->value = xstrdup(boundary);
+			mm_content_attachparam(part->type, param);
+		} else {
+			if (param->value != NULL) {
+				xfree(param->value);
+				param->value = NULL;
+			}
+			param->value = xstrdup(boundary);
+		}	
+	}
+
+	ctx->boundary = boundary;
+	return(0);
 }
 
 /**

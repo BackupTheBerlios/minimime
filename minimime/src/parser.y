@@ -33,9 +33,8 @@
  * messages.
  *
  * TODO:
- *	- get the preamble
- *	- honour parse flags passed to us
- *	- parse Content-Disposition header
+ *	- honour parse flags passed to us (partly done)
+ *	- parse Content-Disposition header (partly done)
  *	- parse Content-Encoding header
  */
 #include <stdio.h>
@@ -60,7 +59,7 @@ extern FILE *mm_yyin;
 FILE *curin;
 
 static int mime_parts = 0;
-static int debug = 1;
+static int debug = 0;
 
 /* MiniMIME specific object pointers */
 static MM_CTX *ctx;
@@ -164,9 +163,17 @@ headers :
 		 * charset of "us-ascii" can be assumed.
 		 */
 		struct mm_content *ct;
+		struct mm_param *param;
+
 		if (!have_contenttype) {
 			ct = mm_content_new();
 			mm_content_settype(ct, "text/plain");
+			
+			param = mm_param_new();
+			param->name = xstrdup("charset");
+			param->value = xstrdup("us-ascii");
+
+			mm_content_attachparam(ct, param);
 			mm_mimepart_attachcontenttype(current_mimepart, ct);
 		}	
 		have_contenttype = 0;
@@ -178,7 +185,17 @@ headers :
 preamble:
 	PREAMBLE
 	{
-		//printf("PREAMBLE: (%d/%d)\n", $1.start, $1.end);
+		char *preamble;
+		size_t offset;
+		
+		if ($1.start != $1.end) {
+			preamble = PARSE_readmessagepart(0, $1.start, $1.end,
+			    &offset);
+			if (preamble == NULL) {
+				return(-1);
+			}
+			ctx->preamble = preamble;
+		}
 	}
 	|
 	;
@@ -231,6 +248,14 @@ header	:
 	mimeversion_header
 	|
 	invalid_header
+	{
+		if (parsemode != MM_PARSE_LOOSE) {
+			mm_errno = MM_ERROR_PARSE;
+			mm_error_setmsg("invalid header encountered");
+			mm_error_setlineno(lineno);
+			return(-1);
+		}	
+	}
 	;
 
 mail_header:
@@ -244,6 +269,14 @@ mail_header:
 	MAIL_HEADER COLON EOL
 	{
 		struct mm_mimeheader *hdr;
+
+		if (parsemode != MM_PARSE_LOOSE) {
+			mm_errno = MM_ERROR_MIME;
+			mm_error_setmsg("invalid header encountered");
+			mm_error_setlineno(lineno);
+			return(-1);
+		}	
+		
 		hdr = mm_mimeheader_generate($1, strdup(""));
 		mm_mimepart_attachheader(current_mimepart, hdr);
 	}
@@ -339,6 +372,14 @@ contenttype_parameters:
 	SEMICOLON contenttype_parameter
 	|
 	SEMICOLON
+	{
+		if (parsemode != MM_PARSE_LOOSE) {
+			mm_errno = MM_ERROR_MIME;
+			mm_error_setmsg("invalid Content-Type header");
+			mm_error_setlineno(lineno);
+			return(-1);
+		}		
+	}
 	;
 
 content_disposition_parameters:
@@ -347,6 +388,14 @@ content_disposition_parameters:
 	SEMICOLON content_disposition_parameter
 	|
 	SEMICOLON
+	{	
+		if (parsemode != MM_PARSE_LOOSE) {
+			mm_errno = MM_ERROR_MIME;
+			mm_error_setmsg("invalid Content-Disposition header");
+			mm_error_setlineno(lineno);
+			return(-1);
+		}		
+	}	
 	;
 
 contenttype_parameter:	
@@ -416,6 +465,12 @@ contenttype_parameter_value:
 	TSPECIAL
 	{
 		/* For broken MIME implementation */
+		if (parsemode != MM_PARSE_LOOSE) {
+			mm_errno = MM_ERROR_MIME;
+			mm_error_setmsg("tspecial without quotes");
+			mm_error_setlineno(lineno);
+			return(-1);
+		}	
 		$$ = $1;
 	}
 	|
@@ -438,11 +493,13 @@ boundary	:
 		if (boundary_string == NULL) {
 			mm_errno = MM_ERROR_PARSE;
 			mm_error_setmsg("internal incosistency");
+			mm_error_setlineno(lineno);
 			return(-1);
 		}
 		if (strcmp(boundary_string, $1)) {
 			mm_errno = MM_ERROR_PARSE;
 			mm_error_setmsg("invalid boundary: %s", $1);
+			mm_error_setlineno(lineno);
 			return(-1);
 		}
 		dprintf("New MIME part... (%s)\n", $1);
@@ -455,11 +512,13 @@ endboundary	:
 		if (endboundary_string == NULL) {
 			mm_errno = MM_ERROR_PARSE;
 			mm_error_setmsg("internal incosistency");
+			mm_error_setlineno(lineno);
 			return(-1);
 		}
 		if (strcmp(endboundary_string, $1)) {
 			mm_errno = MM_ERROR_PARSE;
 			mm_error_setmsg("invalid end boundary: %s", $1);
+			mm_error_setlineno(lineno);
 			return(-1);
 		}
 		dprintf("End of MIME message\n");
@@ -487,6 +546,9 @@ body:
 
 %%
 
+/*
+ * This function gets the specified part from the currently parsed message.
+ */
 static char *
 PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end, 
     size_t *offset)
@@ -525,16 +587,19 @@ PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end,
 	if (end <= start) {
 		mm_errno = MM_ERROR_PARSE;
 		mm_error_setmsg("internal incosistency,2");
+		mm_error_setlineno(lineno);
 		return(NULL);
 	}
 	if (start < *offset) {
 		mm_errno = MM_ERROR_PARSE;
 		mm_error_setmsg("internal incosistency, S:%d,O:%d,L:%d", start, offset, lineno);
+		mm_error_setlineno(lineno);
 		return(NULL);
 	}	
 	if (start < 0 || end < 0) {
 		mm_errno = MM_ERROR_PARSE;
 		mm_error_setmsg("internal incosistency,4");
+		mm_error_setlineno(lineno);
 		return(NULL);
 	}	
 
@@ -543,6 +608,14 @@ PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end,
 
 	/* Read in the body message */
 	body_size = end - start;
+
+	if (body_size < 1) {
+		mm_errno = MM_ERROR_PARSE;
+		mm_error_setmsg("size of body cannot be < 1");
+		mm_error_setlineno(lineno);
+		return(NULL);
+	}	
+	
 	body = (char *)malloc(body_size + 1);
 	if (body == NULL) {
 		mm_errno = MM_ERROR_ERRNO;
