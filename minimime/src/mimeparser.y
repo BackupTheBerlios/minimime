@@ -55,7 +55,7 @@ char *endboundary_string = NULL;
 
 const char *message_buffer = NULL;
 
-extern FILE *mm_yyin;
+extern FILE *mimeparser_yyin;
 FILE *curin;
 
 static int mime_parts = 0;
@@ -642,7 +642,7 @@ PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end,
 	/* Get the message body either from a stream or a memory
 	 * buffer.
 	 */
-	if (mm_yyin != NULL) {
+	if (mimeparser_yyin != NULL) {
 		current = ftell(curin);
 		fseek(curin, start - 1, SEEK_SET);
 		fread(body, body_size - 1, 1, curin);
@@ -656,7 +656,7 @@ PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end,
 }
 
 int
-mm_yyerror(const char *str)
+mimeparser_yyerror(const char *str)
 {
 	mm_errno = MM_ERROR_PARSE;
 	mm_error_setmsg("%s", str);
@@ -665,12 +665,12 @@ mm_yyerror(const char *str)
 }
 
 int 
-mm_yywrap(void)
+mimeparser_yywrap(void)
 {
 	return 1;
 }
 
-/*
+/**
  * Sets the boundary value for the current message
  */
 int 
@@ -750,7 +750,7 @@ PARSER_initialize(MM_CTX *newctx, int mode)
 
 	have_contenttype = 0;
 
-	curin = mm_yyin;
+	curin = mimeparser_yyin;
 
 	return 1;
 }

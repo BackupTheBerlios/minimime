@@ -41,8 +41,8 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "parser.h"
-#include "y.tab.h"
+#include "mimeparser.h"
+#include "mimeparser.tab.h"
 
 #define NAMEOF(v) #v
 /* BC() is a debug wrapper for lex' BEGIN() macro */
@@ -111,7 +111,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 %%
 
 <INITIAL,headers>^[a-zA-Z]+[a-zA-Z0-9\-\_]* {
-	mm_yylval.string=strdup(yytext); 
+	mimeparser_yylval.string=strdup(yytext); 
 	current_pos += yyleng;
 	BC(header);
 
@@ -192,9 +192,9 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 	while (*yytext && isspace(*yytext)) yytext++;
 	/* Do we actually have a header value? */
 	if (*yytext == '\0') {
-		mm_yylval.string = strdup("");
+		mimeparser_yylval.string = strdup("");
 	} else {
-		mm_yylval.string=strdup(yytext); 
+		mimeparser_yylval.string=strdup(yytext); 
 		lineno += count_lines(yytext);
 	}	
 	return WORD;
@@ -229,7 +229,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 
 <headervalue>{STRING}+|{TSPECIAL_LITE}+ {
 	dprintf("W: %s\n", yytext);
-	mm_yylval.string=strdup(yytext);
+	mimeparser_yylval.string=strdup(yytext);
 	lineno += count_lines(yytext);
 	current_pos += yyleng;
 	return WORD;
@@ -242,7 +242,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 <tspecialvalue>{TSPECIAL}+ {
 	dprintf("T: %s\n", yytext);
 	lineno += count_lines(yytext);
-	mm_yylval.string=strdup(yytext);
+	mimeparser_yylval.string=strdup(yytext);
 	current_pos += yyleng;
 	return TSPECIAL;
 }
@@ -269,10 +269,10 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 			current_pos += yyleng;
 			dprintf("YYTEXT == end_boundary: '%s'\n", yytext);
 			if (body_start) {
-				mm_yylval.position.opaque_start = 
+				mimeparser_yylval.position.opaque_start = 
 				    body_opaque_start;
-				mm_yylval.position.start = body_start;
-				mm_yylval.position.end = current_pos - yyleng;
+				mimeparser_yylval.position.start = body_start;
+				mimeparser_yylval.position.end = current_pos - yyleng;
 				body_opaque_start = 0;
 				body_start = 0;
 				body_end = 0;
@@ -300,9 +300,9 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 		} else {
 			dprintf("YYTEXT == boundary: '%s'\n", yytext);
 			if (body_start) {
-				mm_yylval.position.opaque_start = body_opaque_start;
-				mm_yylval.position.start = body_start;
-				mm_yylval.position.end = current_pos;
+				mimeparser_yylval.position.opaque_start = body_opaque_start;
+				mimeparser_yylval.position.start = body_start;
+				mimeparser_yylval.position.end = current_pos;
 				body_opaque_start = 0;
 				body_start = 0;
 				body_end = 0;
@@ -310,15 +310,15 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 				BC(boundary);
 				return BODY;
 			} else if (preamble_start) {
-				mm_yylval.position.start = preamble_start;
-				mm_yylval.position.end = current_pos;
+				mimeparser_yylval.position.start = preamble_start;
+				mimeparser_yylval.position.end = current_pos;
 				preamble_start = preamble_end = 0;
 				yyless(0);
 				BC(boundary);
 				return PREAMBLE;
 			} else {
 				BC(boundary);
-				mm_yylval.string = strdup(yytext);
+				mimeparser_yylval.string = strdup(yytext);
 				current_pos += yyleng;
 				return(BOUNDARY);
 			}
@@ -335,15 +335,20 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 	lineno++;
 }
 
+<body>\r {
+	current_pos += yyleng;
+	dprintf("stray CR in body...\n");
+}
+
 <body>[^\r\n]+ {
 	current_pos += yyleng;
 }
 
 <body><<EOF>> {
 	if (boundary_string == NULL && body_start) {
-		mm_yylval.position.opaque_start = 0;
-		mm_yylval.position.start = body_start;
-		mm_yylval.position.end = current_pos;
+		mimeparser_yylval.position.opaque_start = 0;
+		mimeparser_yylval.position.start = body_start;
+		mimeparser_yylval.position.end = current_pos;
 		body_start = 0;
 		return BODY;
 	} else if (body_start) {
@@ -359,14 +364,14 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 }	
 
 <boundary>[^\r\n]+ {
-	mm_yylval.string = strdup(yytext);
+	mimeparser_yylval.string = strdup(yytext);
 	dprintf("B: '%s'\n", yytext);
 	current_pos += yyleng;
 	return BOUNDARY;
 }
 
 <endboundary>[^\r\n]+ {
-	mm_yylval.string = strdup(yytext);
+	mimeparser_yylval.string = strdup(yytext);
 	dprintf("EB: %s\n", yytext);
 	current_pos += yyleng;
 	return ENDBOUNDARY;
@@ -405,7 +410,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 }
 
 . {
-	dprintf("UC: '%c' in condition\n", *yytext, condition);
+	dprintf("UC: '%c' in condition %d\n", *yytext, condition);
 	current_pos += yyleng;
 	return((int)*yytext);
 }
@@ -424,7 +429,7 @@ PARSER_setbuffer(const char *string)
 void
 PARSER_setfp(FILE *fp)
 {
-	mm_yyin = fp;
+	mimeparser_yyin = fp;
 }
 
 /**
