@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.7 2004/06/03 13:05:31 jfi Exp $
+ * $Id: mm.h,v 1.8 2004/06/04 08:49:15 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -44,9 +44,9 @@
 #define MM_MIME_LINELEN 998
 #define MM_BASE64_LINELEN 76
 
-SLIST_HEAD(mm_mimeheaders, mm_mimeheader);
-SLIST_HEAD(mm_mimeparts, mm_mimepart);
-SLIST_HEAD(mm_params, mm_param);
+TAILQ_HEAD(mm_mimeheaders, mm_mimeheader);
+TAILQ_HEAD(mm_mimeparts, mm_mimepart);
+TAILQ_HEAD(mm_params, mm_param);
 SLIST_HEAD(mm_codecs, mm_codec);
 SLIST_HEAD(mm_warnings, mm_warning);
 
@@ -163,7 +163,7 @@ struct mm_mimeheader
 	char *value;
 
 	/** Pointer to the next header field */
-	SLIST_ENTRY(mm_mimeheader) next;
+	TAILQ_ENTRY(mm_mimeheader) next;
 };
 
 /**
@@ -175,7 +175,8 @@ struct mm_param
 	char *name; 
 	/** Value of the parameter */
 	char *value; 
-	SLIST_ENTRY(mm_param) next;
+
+	TAILQ_ENTRY(mm_param) next;
 };
 
 /**
@@ -232,21 +233,24 @@ struct mm_mimepart
 	char *disposition_size;
 	
 	/** Pointer to the next MIME part */
-	SLIST_ENTRY(mm_mimepart) next;
+	TAILQ_ENTRY(mm_mimepart) next;
 };
 
 /**
- * The MiniMIME context.
+ * Represantation of a MiniMIME context
  */
 struct mm_context
 {
-	unsigned char initialized;
-	unsigned char finalized;
+	/** Linked list of MIME parts in this context */
 	struct mm_mimeparts parts;
+	/** Type of the message */
 	enum mm_messagetype messagetype;
-	int has_contenttype;
+	/** Linked list of warnings for this context */
 	struct mm_warnings warnings;
+	/** Linked list of registered codecs */
 	struct mm_codecs codecs;
+	/** Boundary string */
+	char *boundary;
 };
 typedef struct mm_context MM_CTX;
 typedef struct mm_context mm_ctx_t;

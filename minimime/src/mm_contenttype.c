@@ -1,5 +1,5 @@
 /*
- * $Id: mm_contenttype.c,v 1.3 2004/06/01 09:39:48 jfi Exp $
+ * $Id: mm_contenttype.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -97,7 +97,7 @@ mm_content_new(void)
 	ct->maintype = NULL;
 	ct->subtype = NULL;
 
-	SLIST_INIT(&ct->params);
+	TAILQ_INIT(&ct->params);
 
 	ct->encoding = MM_ENCODING_NONE;
 	ct->encstring = NULL;
@@ -132,8 +132,8 @@ mm_content_free(struct mm_content *ct)
 		ct->encstring = NULL;
 	}
 
-	SLIST_FOREACH(param, &ct->params, next) {
-		SLIST_REMOVE(&ct->params, param, mm_param, next);
+	TAILQ_FOREACH(param, &ct->params, next) {
+		TAILQ_REMOVE(&ct->params, param, next);
 		mm_param_free(param);
 	}	
 
@@ -151,18 +151,13 @@ mm_content_free(struct mm_content *ct)
 int
 mm_content_attachparam(struct mm_content *ct, struct mm_param *param)
 {
-	struct mm_param *tparam, *lparam;
-
 	assert(ct != NULL);
 	assert(param != NULL);
 
-	if (SLIST_EMPTY(&ct->params)) {
-		SLIST_INSERT_HEAD(&ct->params, param, next);
+	if (TAILQ_EMPTY(&ct->params)) {
+		TAILQ_INSERT_HEAD(&ct->params, param, next);
 	} else {
-		SLIST_FOREACH(tparam, &ct->params, next)
-			if (tparam != NULL)
-				lparam = tparam;
-		SLIST_INSERT_AFTER(lparam, param, next);
+		TAILQ_INSERT_TAIL(&ct->params, param, next);
 	}
 
 	return 0;
@@ -308,7 +303,7 @@ mm_content_getparambyname(struct mm_content *ct, const char *name)
 
 	assert(ct != NULL);
 	
-	SLIST_FOREACH(param, &ct->params, next) {
+	TAILQ_FOREACH(param, &ct->params, next) {
 		if (!strcasecmp(param->name, name)) {
 			return param->value;
 		}
@@ -583,7 +578,7 @@ mm_content_paramstostring(struct mm_content *ct)
 	/* Concatenate all Content-Type parameters attached to the current
 	 * Content-Type object to a single string.
 	 */
-	SLIST_FOREACH(param, &ct->params, next) {
+	TAILQ_FOREACH(param, &ct->params, next) {
 		if (asprintf(&cur_param, "; %s=\"%s\"", param->name, 
 		    param->value) == -1) {
 			goto cleanup;
@@ -620,6 +615,72 @@ cleanup:
 	if (cur_param != NULL) {
 		xfree(cur_param);
 		cur_param = NULL;
+	}	
+	return NULL;
+}
+
+/**
+ * Creates a Content-Type header according to the object given
+ *
+ * @param ct A valid Content-Type object
+ *
+ */
+char *
+mm_content_tostring(struct mm_content *ct)
+{
+	char *paramstring;
+	char *buf;
+	char *headerstring;
+	size_t size;
+
+	paramstring = NULL;
+	headerstring = NULL;
+	buf = NULL;
+
+	if (ct == NULL) {
+		return NULL;
+	}	
+	if (ct->maintype == NULL || ct->subtype == NULL) {
+		return NULL;
+	}	
+
+	size = strlen(ct->maintype) + strlen(ct->subtype) + 2;
+	headerstring = (char *)xmalloc(size);
+	snprintf(headerstring, size, "%s/%s", ct->maintype, ct->subtype);
+
+	paramstring = mm_content_paramstostring(ct);
+	if (paramstring == NULL) {
+		goto cleanup;
+	}
+
+	size += strlen(paramstring) + strlen("Content-Type: ") + 1;
+	buf = (char *)malloc(size);
+	if (buf == NULL) {
+		goto cleanup;
+	}
+
+	snprintf(buf, size, "Content-Type: %s%s", headerstring, paramstring);
+
+	xfree(headerstring);
+	xfree(paramstring);
+
+	headerstring = NULL;
+	paramstring = NULL;
+
+	return buf;
+
+cleanup:
+	if (paramstring != NULL) {
+		xfree(paramstring);
+		paramstring = NULL;
+	}
+	if (headerstring != NULL) {
+		xfree(headerstring);
+		headerstring = NULL;
+	}	
+	if (buf != NULL) {
+		xfree(buf);
+		buf = NULL;
 	}	
 	return NULL;
 }

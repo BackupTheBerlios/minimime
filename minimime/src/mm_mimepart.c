@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.3 2004/06/03 13:05:31 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -77,7 +77,7 @@ mm_mimepart_new(void)
 
 	part = (struct mm_mimepart *)xmalloc(sizeof(struct mm_mimepart));
 
-	SLIST_INIT(&part->headers);
+	TAILQ_INIT(&part->headers);
 
 	part->opaque_length = 0;
 	part->opaque_body = NULL;
@@ -159,9 +159,9 @@ mm_mimepart_free(struct mm_mimepart *part)
 
 	assert(part != NULL);
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		mm_mimeheader_free(header);
-		SLIST_REMOVE(&part->headers, header, mm_mimeheader, next);
+		TAILQ_REMOVE(&part->headers, header, next);
 	}
 
 	if (part->opaque_body != NULL) {
@@ -223,18 +223,13 @@ mm_mimepart_free(struct mm_mimepart *part)
 int
 mm_mimepart_attachheader(struct mm_mimepart *part, struct mm_mimeheader *header)
 {
-	struct mm_mimeheader *theader, *lheader;
-
 	assert(part != NULL);
 	assert(header != NULL);
 
-	if (SLIST_EMPTY(&part->headers)) {
-		SLIST_INSERT_HEAD(&part->headers, header, next);
+	if (TAILQ_EMPTY(&part->headers)) {
+		TAILQ_INSERT_HEAD(&part->headers, header, next);
 	} else {
-		SLIST_FOREACH(theader, &part->headers, next) 
-			if (theader != NULL)
-				lheader = theader;
-		SLIST_INSERT_AFTER(lheader, header, next);
+		TAILQ_INSERT_TAIL(&part->headers, header, next);
 	}
 
 	return(0);
@@ -256,7 +251,7 @@ mm_mimepart_countheaders(struct mm_mimepart *part)
 
 	found = 0;
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		found++;
 	}
 
@@ -280,7 +275,7 @@ mm_mimepart_countheaderbyname(struct mm_mimepart *part, const char *name)
 
 	found = 0;
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		if (strcasecmp(header->name, name) == 0) {
 			found++;
 		}
@@ -308,7 +303,7 @@ mm_mimepart_getheaderbyname(struct mm_mimepart *part, const char *name, int idx)
 
 	curidx = 0;
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		if (!strcasecmp(header->name, name)) {
 			if (curidx == idx)
 				return header;
@@ -373,7 +368,7 @@ mm_mimepart_headers_start(struct mm_mimepart *part, struct mm_mimeheader **id)
 {
 	assert(part != NULL);
 	
-	if (SLIST_EMPTY(&part->headers)) {
+	if (TAILQ_EMPTY(&part->headers)) {
 		return -1;
 	}
 	*id = NULL;
@@ -397,9 +392,9 @@ mm_mimepart_headers_next(struct mm_mimepart *part, struct mm_mimeheader **id)
 	assert(part != NULL);
 
 	if (*id == NULL) {
-		header = SLIST_FIRST(&part->headers);
+		header = TAILQ_FIRST(&part->headers);
 	} else {
-		header = SLIST_NEXT(*id, next);
+		header = TAILQ_NEXT(*id, next);
 	}
 	*id = header;
 

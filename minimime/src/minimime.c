@@ -100,7 +100,6 @@ main(int argc, char **argv)
 		/* Create a new context */
 		ctx = mm_context_new();
 
-
 		/* Parse a file into our context */
 		if (scan_mode == 0) {
 			i = mm_parse_file(ctx, argv[0], MM_PARSE_LOOSE, 0);
@@ -127,7 +126,8 @@ main(int argc, char **argv)
 			
 			i = mm_parse_mem(ctx, buf, MM_PARSE_LOOSE, 0);
 		}
-		if (i == -1) {	
+
+		if (i == -1 || mm_errno != MM_ERROR_NONE) {	
 			printf("ERROR: %s\n", mm_error_string());
 			exit(1);
 		}
@@ -162,10 +162,17 @@ main(int argc, char **argv)
 			printf("%s: %s\n", header->name, header->value);
 		}
 
+		printf("%s\n", mm_content_tostring(part->type));
 		printf("\n");
 		
 		ct = part->type;
 		assert(ct != NULL);
+
+		if (mm_context_iscomposite(ctx) == 0) {
+			printf("Printing body part for FLAT message:\n");
+			part = mm_context_getpart(ctx, 0);
+			printf("%s", part->body);
+		}	
 
 		/* Loop through all MIME parts beginning with 1 */
 		for (i = 1; i < mm_context_countparts(ctx); i++) {
@@ -189,6 +196,8 @@ main(int argc, char **argv)
 			while ((header = mm_mimepart_headers_next(part, &lastheader)) != NULL) {
 				printf("%s: %s\n", header->name, header->value);
 			}
+
+			printf("%s\n", mm_content_tostring(part->type));
 
 			/* Print MIME part body */
 			printf("\nPrinting message BODY:\n%s\n", (char *)part->opaque_body);

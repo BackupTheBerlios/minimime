@@ -31,6 +31,10 @@
 /**
  * These are the grammatic definitions in yacc syntax to parse MIME conform
  * messages.
+ *
+ * TODO:
+ *	- get the preamble
+ *	- honour parse flags passed to us
  */
 #include <stdio.h>
 #include <stdarg.h>
@@ -88,7 +92,6 @@ static int have_contenttype;
 %token MIMEVERSION_HEADER
 %token SEMICOLON
 
-//%token <string> EOL
 %token <string> CONTENTDISPOSITION_HEADER
 %token <string> CONTENTENCODING_HEADER
 %token <string> CONTENTTYPE_HEADER
@@ -503,6 +506,8 @@ set_boundary(char *str)
 		}	
 		return -1;
 	}
+	
+	ctx->boundary = xstrdup(str);
 
 	snprintf(boundary_string, blen + 3, "--%s", str);
 	snprintf(endboundary_string, blen + 5, "--%s--", str);
@@ -531,6 +536,9 @@ dprintf(const char *fmt, ...)
 	
 }
 
+/**
+ * Initializes the parser engine.
+ */
 int
 PARSER_initialize(MM_CTX *newctx)
 {

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.2 2004/06/03 13:05:31 jfi Exp $
+ * $Id: mm_context.c,v 1.3 2004/06/04 08:49:15 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -89,11 +89,10 @@ mm_context_new(void)
 	MM_ISINIT();
 
 	ctx = (MM_CTX *)xmalloc(sizeof(MM_CTX));
-	ctx->initialized = 1;
-	ctx->finalized = 0;
 	ctx->messagetype = MM_MSGTYPE_FLAT; /* This is the default */
+	ctx->boundary = NULL;
 
-	SLIST_INIT(&ctx->parts);
+	TAILQ_INIT(&ctx->parts);
 	SLIST_INIT(&ctx->warnings);
 
 	return ctx;
@@ -113,11 +112,15 @@ mm_context_free(MM_CTX *ctx)
 	struct mm_warning *warning;
 	
 	assert(ctx != NULL);
-	ctx->initialized = 0;
 
-	SLIST_FOREACH(part, &ctx->parts, next) {
-		SLIST_REMOVE(&ctx->parts, part, mm_mimepart, next);
+	TAILQ_FOREACH(part, &ctx->parts, next) {
+		TAILQ_REMOVE(&ctx->parts, part, next);
 		mm_mimepart_free(part);
+	}
+
+	if (ctx->boundary != NULL) {
+		xfree(ctx->boundary);
+		ctx->boundary = NULL;
 	}
 
 	SLIST_FOREACH(warning, &ctx->warnings, next) {
@@ -146,14 +149,10 @@ mm_context_attachpart(MM_CTX *ctx, struct mm_mimepart *part)
 	assert(ctx != NULL);
 	assert(part != NULL);
 	
-	if (SLIST_EMPTY(&ctx->parts)) {
-		SLIST_INSERT_HEAD(&ctx->parts, part, next);
+	if (TAILQ_EMPTY(&ctx->parts)) {
+		TAILQ_INSERT_HEAD(&ctx->parts, part, next);
 	} else {
-		struct mm_mimepart *last, *tmp;
-		SLIST_FOREACH(tmp, &ctx->parts, next)
-			if (tmp != NULL)
-				last = tmp;
-		SLIST_INSERT_AFTER(last, part, next);
+		TAILQ_INSERT_TAIL(&ctx->parts, part, next);
 	}
 
 	return 0;
@@ -179,9 +178,9 @@ mm_context_deletepart(MM_CTX *ctx, int which, int freemem)
 
 	cur = 0;
 
-	SLIST_FOREACH(part, &ctx->parts, next) {
+	TAILQ_FOREACH(part, &ctx->parts, next) {
 		if (cur == which) {
-			SLIST_REMOVE(&ctx->parts, part, mm_mimepart, next);
+			TAILQ_REMOVE(&ctx->parts, part, next);
 			if (freemem)
 				mm_mimepart_free(part);
 			return 0;
@@ -205,14 +204,13 @@ mm_context_countparts(MM_CTX *ctx)
 	struct mm_mimepart *part;
 	
 	assert(ctx != NULL);
-	assert(ctx->initialized == 1);
 
 	count = 0;
 
-	if (SLIST_EMPTY(&ctx->parts)) {
+	if (TAILQ_EMPTY(&ctx->parts)) {
 		return 0;
 	} else {
-		SLIST_FOREACH(part, &ctx->parts, next) {
+		TAILQ_FOREACH(part, &ctx->parts, next) {
 			count++;
 		}
 	}
@@ -240,7 +238,7 @@ mm_context_getpart(MM_CTX *ctx, int which)
 
 	cur = 0;
 	
-	SLIST_FOREACH(part, &ctx->parts, next) {
+	TAILQ_FOREACH(part, &ctx->parts, next) {
 		if (cur == which) {
 			return part;
 		}
@@ -287,7 +285,7 @@ mm_context_setheader(MM_CTX *ctx, const char *fmt, ...)
 		return -1;
 	}
 
-	SLIST_FOREACH(lheader, &part->headers, next) {
+	TAILQ_FOREACH(lheader, &part->headers, next) {
 		if (lheader != NULL) {
 			assert(lheader->name != NULL);
 			assert(lheader->value != NULL);
@@ -303,7 +301,7 @@ mm_context_setheader(MM_CTX *ctx, const char *fmt, ...)
 		}
 	}
 
-	SLIST_INSERT_AFTER(pheader, header, next);
+	TAILQ_INSERT_AFTER(&part->headers, pheader, header, next);
 	
 	return 0;
 }
@@ -453,8 +451,7 @@ mm_context_finalize(MM_CTX *ctx)
 		return -1;
 	}
 
-	/* TODO: this is a slow way to lookup the headers. make it faster */
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		mm_context_lookupheader(header->name, required_headers);
 	}
 
@@ -500,6 +497,41 @@ mm_context_haswarnings(MM_CTX *ctx)
 	} else {
 		return 1;
 	}
+}
+
+/**
+ * Creates an ASCII message of the specified context
+ *
+ * @param ctx A valid MiniMIME context object
+ * @param flat Where to store the message
+ * @param opaque Whether the MIME parts should be included opaque
+ *
+ */
+int
+mm_context_flatten(MM_CTX *ctx, char **flat, int opaque)
+{
+	struct mm_mimepart *part;
+	char *message;
+	char *flatpart;
+	size_t message_size;
+	char envelope;
+
+	mm_errno = MM_ERROR_NONE;
+	envelope = 1;
+
+	TAILQ_FOREACH(part, &ctx->parts, next) {
+		if (envelope) {
+			envelope = 0;
+			continue;
+		}	
+		/*
+		if (mm_mimepart_flatten(part, &flatpart, opaque) == -1) {
+		}
+		*/
+		
+		message_size += strlen(flatpart);
+	}
+
 }
 
 /** @} */

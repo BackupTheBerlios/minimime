@@ -1,5 +1,5 @@
 /*
- * $Id: mm_header.c,v 1.3 2004/06/03 13:05:31 jfi Exp $
+ * $Id: mm_header.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -300,7 +300,7 @@ mm_mimeheader_uncommentbyname(struct mm_mimepart *part, const char *name)
 {
 	struct mm_mimeheader *header;
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		if (!strcasecmp(header->name, name)) {
 			return mm_mimeheader_uncomment(header);
 		}
@@ -318,7 +318,7 @@ mm_mimeheader_uncommentall(struct mm_mimepart *part)
 
 	ret = 0;
 
-	SLIST_FOREACH(header, &part->headers, next) {
+	TAILQ_FOREACH(header, &part->headers, next) {
 		if ((r = mm_mimeheader_uncomment(header)) == -1) {
 			ret = -1;
 		}
