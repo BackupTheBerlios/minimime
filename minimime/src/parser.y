@@ -35,6 +35,8 @@
  * TODO:
  *	- get the preamble
  *	- honour parse flags passed to us
+ *	- parse Content-Disposition header
+ *	- parse Content-Encoding header
  */
 #include <stdio.h>
 #include <stdarg.h>

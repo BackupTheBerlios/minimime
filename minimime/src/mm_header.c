@@ -1,5 +1,5 @@
 /*
- * $Id: mm_header.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
+ * $Id: mm_header.c,v 1.5 2004/06/04 14:27:29 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -45,25 +45,6 @@
  *
  * This module contains functions for manipulating MIME headers
  */
-
-/*
-static const char *mm_headers_loose[] = {
-	"From",
-	"To",
-	"Date",
-	NULL,
-};
-
-static const char *mm_headers_strict[] = {
-	"From",
-	"To",
-	"Date",
-	"Subject",
-	"MIME-Version",
-	"Content-Type",
-	NULL,
-};
-*/
 
 /**
  * Creates a new MIME header object
@@ -155,109 +136,6 @@ mm_mimeheader_append(struct mm_mimeheader *header, char *value)
 	strlcat(header->value, append, new_hdrlen);
 
 	return 0;
-}
-
-/**
- * Parses a string into a MIME header object
- *
- * @param string The string which to parse
- * @param flags The parser flags to use
- * @param last A pointer to a MIME header object for reeantrance
- * @return A new MIME header object on success or a NULL pointer on failure.
- *	Sets mm_errno in case of an error.
- *
- * This function parses a MIME header (as in RFC 2822) into a MIME header. 
- */
-struct mm_mimeheader *
-mm_mimeheader_parse(const char *string, int flags, struct mm_mimeheader **last)
-{
-	struct mm_mimeheader *header;
-	char *buf, *orig;
-	char error;
-
-	assert(string != NULL);
-
-	header = NULL;
-	orig = NULL;
-	error = 0;
-
-	mm_errno = MM_ERROR_NONE;
-	
-	if ((flags & ~MM_PARSE_LOOSE) && strlen(string) > MM_MIME_LINELEN) {
-		mm_errno = MM_ERROR_MIME;
-		mm_error_setmsg("Header line too long");
-		return NULL;
-	}
-
-	buf = xstrdup(string);
-	orig = buf;
-
-	/* Strip trailing CR's and LF's, we do not need them */
-	if (strlen(buf) > 1) {
-		STRIP_TRAILING(buf, "\r\n");
-	}
-
-	if (isspace(buf[0])) {
-		assert(*last != NULL);
-		mm_mimeheader_append(*last, buf);
-	} else {
-		char *name, *value;
-
-		name = strsep(&buf, ":");
-		if (name == NULL) {
-			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("Invalid header format");
-			goto cleanup;
-		}
-
-		value = strsep(&buf, "");
-		if (value == NULL) {
-			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("Invalid header format");
-			goto cleanup;
-		}
-
-		/* Skip leading whitespaces in the value */
-		while (*value != '\0' && isspace(*value))
-			value++;
-		if (*value == '\0') {
-			mm_errno = MM_ERROR_MIME;
-			goto cleanup;
-		}
-		
-		header = mm_mimeheader_new();
-
-		header->name = xstrdup(name);
-		header->value = xstrdup(value);
-
-		*last = header;
-	}
-
-cleanup:
-	if (orig != NULL) {
-		xfree(orig);
-		orig = NULL;
-	}
-
-	if (mm_errno != MM_ERROR_NONE)
-		return NULL;
-	else
-		return header;
-}
-
-struct mm_mimeheader *
-mm_mimeheader_parsefmt(int flags, const char *fmt, ...)
-{
-	struct mm_mimeheader *header, *lheader;
-	char result[MM_MIME_LINELEN];
-	va_list ap;
-
-	va_start(ap, fmt);
-	vsnprintf(result, sizeof result, fmt, ap);
-	va_end(ap);
-
-	header = mm_mimeheader_parse(result, flags, &lheader);
-	return header;
 }
 
 /**

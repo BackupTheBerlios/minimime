@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.9 2004/06/04 09:36:11 jfi Exp $
+ * $Id: mm.h,v 1.10 2004/06/04 14:27:29 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -290,7 +290,6 @@ int mm_context_attachpart(MM_CTX *, struct mm_mimepart *);
 int mm_context_deletepart(MM_CTX *, int, int);
 int mm_context_countparts(MM_CTX *);
 struct mm_mimepart *mm_context_getpart(MM_CTX *, int);
-int mm_context_addaddress(MM_CTX *, int, const char *, const char *);
 int mm_context_iscomposite(MM_CTX *);
 int mm_context_haswarnings(MM_CTX *);
 
@@ -304,8 +303,6 @@ int mm_parse_file(MM_CTX *, const char *, int, int);
  */
 struct mm_mimeheader *mm_mimeheader_new(void);
 void mm_mimeheader_free(struct mm_mimeheader *);
-struct mm_mimeheader *mm_mimeheader_parse(const char *, int, struct mm_mimeheader **);
-struct mm_mimeheader *mm_mimeheader_parsefmt(int, const char *, ...);
 struct mm_mimeheader *mm_mimeheader_generate(const char *, const char *);
 int mm_mimeheader_uncomment(struct mm_mimeheader *);
 int mm_mimeheader_uncommentbyname(struct mm_mimepart *, const char *);
