@@ -137,6 +137,7 @@ singlepart_message:
 	headers body
 	{
 		dprintf("This was a single part message\n");
+		mm_context_attachpart(ctx, current_mimepart);
 	}
 	;
 	
@@ -398,14 +399,22 @@ body:
 		 * header stripped body message.
 		 */
 		if ($1.opaque_start > 0) {
-			if ($1.start < $1.opaque_start) {
-				mm_errno = MM_ERROR_PARSE;
-				mm_error_setmsg("internal incosistency,1");
-				return(-1);
-			}
-			start = $1.opaque_start;
-			offset = $1.start - start;
-			//assert(offset < 0);
+			/* Multipart message */
+			if ($1.start) {
+				if ($1.start < $1.opaque_start) {
+					mm_errno = MM_ERROR_PARSE;
+					mm_error_setmsg("internal incosistency (S:%d/O:%d)",
+					    $1.start,
+					    $1.opaque_start);
+					return(-1);
+				}
+				start = $1.opaque_start;
+				offset = $1.start - start;
+			/* Flat message */	
+			} else {	
+				start = $1.opaque_start;
+				offset = 0;
+			}	
 		} else {
 			start = $1.start;
 			offset = 0;
@@ -460,9 +469,8 @@ body:
 
 void mm_yyerror(const char *str)
 {
-	fprintf(stderr, "Error: %s at line %d\n", str, lineno);
-	fprintf(stderr, "In condition: %d\n", condition);
-	exit(1);
+	mm_errno = MM_ERROR_PARSE;
+	mm_error_setmsg("%s", str);
 }
 
 int mm_yywrap(void)
