@@ -1,5 +1,5 @@
 /*
- * $Id: mm_util.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_util.c,v 1.2 2004/06/07 14:11:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -394,34 +394,6 @@ mm_addchars(char *input, char *add, u_int16_t linelength)
 	output = orig;
 
 	return(orig);
-}
-
-/**
- * Generates an RFC 2822 conform date string
- *
- * @param timezone Whether to include timezone information
- * @returns A pointer to the actual date string
- * @note The pointer returned must be freed some time
- *
- * This function generates an RFC 2822 conform date string to use in message
- * headers. It allocates memory to hold the string and returns a pointer to
- * it. The generated date is in the format (example):
- *
- *	Thu, 25 December 2003 16:35:22 +0100 (CET)
- */
-char *
-mm_gendate(void)
-{
-	time_t curtime;
-	struct tm *curtm;
-	char buf[50];
-	
-	curtime = time(NULL);
-	curtm = localtime(&curtime);
-
-	strftime(buf, sizeof buf, "%a, %d %b %G %T %z (%Z)", curtm);
-
-	return xstrdup(buf);
 }
 
 inline void

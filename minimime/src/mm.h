@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.10 2004/06/04 14:27:29 jfi Exp $
+ * $Id: mm.h,v 1.11 2004/06/07 14:11:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -51,14 +51,23 @@ SLIST_HEAD(mm_codecs, mm_codec);
 SLIST_HEAD(mm_warnings, mm_warning);
 
 /**
+ * Parser modes
+ */
+enum mm_parsemodes
+{
+	/** Parse loosely, accept some MIME quirks */
+	MM_PARSE_LOOSE = 0,
+	/** Parse as strict as possible */
+	MM_PARSE_STRICT
+};
+
+/**
  * Available parser flags
  */
 enum mm_parseflags
 {
 	MM_PARSE_NONE = (1L << 0),
-	MM_PARSE_LOOSE = (1L << 1),
-	MM_PARSE_STRIPCOMMENTS = (1L << 2),
-	MM_PARSE_FASCIST = (1L << 2),
+	MM_PARSE_STRIPCOMMENTS = (1L << 1),
 };
 
 /**
@@ -252,6 +261,8 @@ struct mm_context
 	struct mm_codecs codecs;
 	/** Boundary string */
 	char *boundary;
+	/** The preamble of the message */
+	char *preamble;
 };
 typedef struct mm_context MM_CTX;
 typedef struct mm_context mm_ctx_t;
@@ -269,6 +280,7 @@ char *mm_stripchars(char *, char *);
 char *mm_addchars(char *, char *, u_int16_t);
 char *mm_gendate(void);
 inline void mm_striptrailing(char **, const char *);
+char *mm_mimeutil_genboundary(char *, size_t);
 
 /**
  * @}
@@ -277,7 +289,14 @@ inline void mm_striptrailing(char **, const char *);
  */
 int mm_library_init(void);
 int mm_library_isinitialized(void);
-int PARSER_initialize(MM_CTX *);
+
+/**
+ * @}
+ * @{
+ * @name Parsing MIME messages
+ */
+int mm_parse_mem(MM_CTX *, const char *, int, int);
+int mm_parse_file(MM_CTX *, const char *, int, int);
 
 /**
  * @}
@@ -292,9 +311,9 @@ int mm_context_countparts(MM_CTX *);
 struct mm_mimepart *mm_context_getpart(MM_CTX *, int);
 int mm_context_iscomposite(MM_CTX *);
 int mm_context_haswarnings(MM_CTX *);
+int mm_context_flatten(MM_CTX *, char **, size_t *, int);
 
-int mm_parse_mem(MM_CTX *, const char *, int, int);
-int mm_parse_file(MM_CTX *, const char *, int, int);
+int mm_envelope_getheaders(MM_CTX *, char **, size_t *);
 
 /**
  * @}
@@ -307,6 +326,7 @@ struct mm_mimeheader *mm_mimeheader_generate(const char *, const char *);
 int mm_mimeheader_uncomment(struct mm_mimeheader *);
 int mm_mimeheader_uncommentbyname(struct mm_mimepart *, const char *);
 int mm_mimeheader_uncommentall(struct mm_mimepart *);
+int mm_mimeheader_tostring(struct mm_mimeheader *);
 
 /**
  * @}
@@ -327,6 +347,8 @@ struct mm_content *mm_mimepart_gettype(struct mm_mimepart *);
 size_t mm_mimepart_getlength(struct mm_mimepart *);
 char *mm_mimepart_getbody(struct mm_mimepart *, int);
 void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
+int mm_mimepart_setdefaultcontenttype(struct mm_mimepart *);
+int mm_mimepart_flatten(struct mm_mimepart *, char **, size_t *, int);
 /** @} */
 
 struct mm_content *mm_content_new(void);
@@ -344,6 +366,7 @@ int mm_content_iscomposite(struct mm_content *);
 int mm_content_isvalidencoding(const char *);
 int mm_content_setencoding(struct mm_content *, const char *);
 char *mm_content_paramstostring(struct mm_content *);
+char *mm_content_tostring(struct mm_content *);
 
 struct mm_param *mm_param_new(void);
 void mm_param_free(struct mm_param *);
@@ -367,6 +390,7 @@ void mm_error_init(void);
 void mm_error_setmsg(const char *, ...);
 void mm_error_setlineno(int lineno);
 char *mm_error_string(void);
+int mm_error_lineno(void);
 
 void mm_warning_add(MM_CTX *, int, const char *, ...);
 struct mm_warning *mm_warning_next(MM_CTX *, struct mm_warning **);

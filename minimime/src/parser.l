@@ -425,6 +425,12 @@ PARSER_setbuffer(const char *string)
 	yy_scan_string(string);
 }
 
+void
+PARSER_setfp(FILE *fp)
+{
+	mm_yyin = fp;
+}
+
 /**
  * Counts how many lines a given string represents in the message (in case of
  * folded header values, for example, or a message body).

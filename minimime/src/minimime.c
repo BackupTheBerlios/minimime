@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <err.h>
 
 #include "mm.h"
 
@@ -204,7 +205,7 @@ main(int argc, char **argv)
 			decoded = mm_mimepart_decode(part);
 			if (decoded != NULL) {
 				printf("DECODED:\n%s\n", decoded);
-				xfree(decoded);
+				free(decoded);
 			}
 		}
 		
@@ -217,6 +218,17 @@ main(int argc, char **argv)
 				fprintf(stderr, " -> %s\n", warning->message);
 			}
 		}
+
+		printf("ENVELOPE:\n");
+
+		do {
+			char *env;
+			size_t env_len;
+
+			mm_context_flatten(ctx, &env, &env_len, 0);
+			printf("%s", env);
+
+		} while (0);	
 
 		mm_context_free(ctx);
 		ctx = NULL;

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.5 2004/06/04 08:49:15 jfi Exp $
+# $Id: Makefile,v 1.6 2004/06/07 14:11:02 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -15,10 +15,12 @@ SRCS= \
 	mm_codecs.c \
 	mm_contenttype.c \
 	mm_context.c \
+	mm_envelope.c \
 	mm_error.c \
 	mm_header.c \
 	mm_mem.c \
 	mm_mimepart.c \
+	mm_mimeutil.c \
 	mm_param.c \
 	mm_parse.c \
 	mm_util.c \
@@ -51,8 +53,10 @@ SRCS+= minimime.c
 # Uncomment the following if you need to debug memory leaks within the
 # library. ATTENTION: the code is not suitable for production purposes
 # and could behave unexpectedly. You have been warned ;-).
+
 #DEFINES+= -D__HAVE_LEAK_DETECTION
 #DEFINES+= -DMM_DEBUG
+
 CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES)
 LDFLAGS?=
 LIBS?=
@@ -66,7 +70,7 @@ PREFIX?=
 
 all: $(LIBNAME)
 
-depend: .depend
+depend: 
 	mkdep $(CFLAGS) $(SRCS)
 
 $(OBJS): $(HDRS) Makefile ../Make.conf

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_parse.c,v 1.5 2004/06/04 14:27:29 jfi Exp $
+ * $Id: mm_parse.c,v 1.6 2004/06/07 14:11:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -47,9 +47,9 @@
 #include "parser.h"
 #include "y.tab.h"
 
-int PARSER_setbuffer(const char *);
-
-extern FILE *mm_yyin;
+void PARSER_initialize(MM_CTX *, int);
+void PARSER_setbuffer(const char *);
+void PARSER_setfp(FILE *);
 
 /** @file mm_parse.c
  *
@@ -61,7 +61,8 @@ extern FILE *mm_yyin;
  *
  * @param ctx A valid MiniMIME context object
  * @param text The NUL-terminated string to parse
- * @param parseflags A valid combination of parser flags
+ * @param parsemode The parsemode
+ * @param flags The flags to pass to the parser
  * @returns 0 on success or -1 on failure
  * @note Sets mm_errno if an error occurs
  *
@@ -69,7 +70,7 @@ extern FILE *mm_yyin;
  * by text (must be NUL-terminated) according to the parseflags and stores the
  * results in the MiniMIME context specified by ctx.
  *
- * The following flags can be used to specify how the message should be
+ * The following modes can be used to specify how the message should be
  * parsed:
  *
  *	- MM_PARSE_STRICT: Do not tolerate MIME violations
@@ -79,16 +80,41 @@ extern FILE *mm_yyin;
  * be freed using mm_context_free().
  */
 int
-mm_parse_mem(MM_CTX *ctx, const char *text, int parseflages, int foo)
+mm_parse_mem(MM_CTX *ctx, const char *text, int parsemode, int flags)
 {
-	PARSER_initialize(ctx);
+	PARSER_initialize(ctx, parsemode);
+	
 	PARSER_setbuffer(text);
-	mm_yyin = NULL;
+	PARSER_setfp(NULL);
+	
 	return mm_yyparse();
 }
 
+/**
+ * Parses a file into a MiniMIME context
+ *
+ * @param ctx A valid MiniMIME context object
+ * @param filename The name of the file to parse
+ * @param parsemode The parsemode
+ * @param flags The flags to pass to the parser
+ * @returns 0 on success or -1 on failure
+ * @note Sets mm_errno if an error occurs
+ *
+ * This function parses a MIME message, stored in the filesystem according to
+ * the parseflags and stores the results in the MiniMIME context specified by 
+ * ctx.
+ *
+ * The following modes can be used to specify how the message should be
+ * parsed:
+ *
+ *	- MM_PARSE_STRICT: Do not tolerate MIME violations
+ *	- MM_PARSE_LOOSE: Tolerate as much MIME violations as possible
+ *
+ * The context needs to be initialized before using mm_context_new() and may
+ * be freed using mm_context_free().
+ */
 int
-mm_parse_file(MM_CTX *ctx, const char *filename, int parseflags, int foo)
+mm_parse_file(MM_CTX *ctx, const char *filename, int parsemode, int flags)
 {
 	FILE *fp;
 
@@ -97,8 +123,8 @@ mm_parse_file(MM_CTX *ctx, const char *filename, int parseflags, int foo)
 		return -1;
 	}
 	
-	mm_yyin = fp;
-	PARSER_initialize(ctx);
+	PARSER_setfp(fp);
+	PARSER_initialize(ctx, parsemode);
 
 	return mm_yyparse();
 }

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.4 2004/06/04 08:49:15 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.5 2004/06/07 14:11:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -491,6 +491,136 @@ mm_mimepart_decode(struct mm_mimepart *part)
 	return decoded;
 }
 
+/**
+ * Creates an ASCII representation of the given MIME part
+ *
+ * @param part A valid MIME part object
+ * @param result Where to store the result
+ * @param length Where to store the length of the result
+ * @param opaque Whether to use the opaque MIME part
+ * @returtn 0 on success or -1 on error.
+ * @see mm_context_flatten
+ *
+ * This function creates an ASCII representation of a given MIME part. It will
+ * dynamically allocate the memory needed and stores the result in the memory
+ * region pointed to by result. The length of the result will be stored in
+ * length. If opaque is set to 1, mm_mimepart_flatten will store an opaque
+ * version of the MIME part in result, which means no headers will be created
+ * or sanitized. This is particulary useful if the part is digitally signed by
+ * e.g. PGP, and the signature spans the header fields of the part in question.
+ * 
+ */
+int
+mm_mimepart_flatten(struct mm_mimepart *part, char **result, size_t *length,
+    int opaque)
+{
+	size_t part_length;
+	char *buf;
+	char *ct_hdr;
+
+	*result = NULL;
+	*length = 0;
+	buf = NULL;
+	ct_hdr = NULL;
+	part_length = 0;
+
+	if (opaque) {
+		part_length = strlen(part->opaque_body);
+		*result = xstrdup(part->opaque_body);
+		*length = part_length;
+		return(0);
+	} else {
+		if (part->type == NULL) {
+			return(-1);
+		}	
+		
+		ct_hdr = mm_content_tostring(part->type);
+		if (ct_hdr == NULL) {
+			return(-1);
+		}
+
+		part_length += strlen(ct_hdr) + 2;
+		part_length += strlen("\r\n") * 2;
+		part_length += strlen(part->body);
+	
+		if (part_length < 0) {
+			goto cleanup;
+		}	
+
+		buf = (char *) xmalloc(part_length);
+		if (buf == NULL) {
+			goto cleanup;
+		}
+
+		snprintf(buf, part_length, 
+		    "%s\r\n\r\n%s\r\n",
+		     ct_hdr,
+		     part->body);
+
+		xfree(ct_hdr);
+		ct_hdr = NULL;
+
+		*result = buf;
+		*length = part_length;
+	}
+
+	return(0);
+
+cleanup:
+	if (ct_hdr != NULL) {
+		xfree(ct_hdr);
+		ct_hdr = NULL;
+	}
+	if (buf != NULL) {
+		xfree(buf);
+		buf = NULL;
+	}
+	
+	*result = NULL;
+	*length = 0;
+	
+	return -1;
+}
+
+/**
+ * Sets the default Content-Type for a given MIME part
+ *
+ * @param part A valid MIME part object
+ * @return 0 on success or -1 on failure
+ *
+ * This function sets a default Content-Type according to RFC 2045 with a value
+ * of "text/plain; charset="us-ascii"". This function should only be used if
+ * the MIME part in question does not have a valid Content-Type specification.
+ */
+int
+mm_mimepart_setdefaultcontenttype(struct mm_mimepart *part)
+{
+	struct mm_content *type;
+	struct mm_param *param;
+
+	if (part == NULL) {
+		return(-1);
+	}
+
+	if (part->type != NULL) {
+		mm_content_free(part->type);
+		part->type = NULL;
+	}
+
+	type = mm_content_new();
+	type->maintype = xstrdup("text");
+	type->subtype = xstrdup("plain");
+	
+	param = mm_param_new();
+	param->name = xstrdup("charset");
+	param->value = xstrdup("us-ascii");
+
+	mm_content_attachparam(type, param);
+	mm_mimepart_attachcontenttype(part, type);
+
+	return (0);
+}
+
 /** @{ 
  * @name Accessing the MIME part's Content-Type information
  */
@@ -500,6 +630,11 @@ mm_mimepart_decode(struct mm_mimepart *part)
  *
  * @param part A valid MIME part object
  * @param ct The content type object to attach
+ * @return Nothing
+ *
+ * This function attaches a Content-Type object to a MIME part. It does not
+ * care whether the Content-Type suites the actual content in the MIME part,
+ * so the programmer should take care of that.
  */
 void
 mm_mimepart_attachcontenttype(struct mm_mimepart *part, struct mm_content *ct)

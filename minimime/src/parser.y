@@ -74,6 +74,11 @@ static struct mm_mimepart *current_mimepart = NULL;
 /* Marker for indicating a found Content-Type header */
 static int have_contenttype;
 
+/* The parse mode */
+static int parsemode;
+
+static char *PARSE_readmessagepart(size_t, size_t, size_t, size_t *);
+
 %}
 
 %union
@@ -109,7 +114,8 @@ static int have_contenttype;
 %token <position> PREAMBLE
 %token <position> POSTAMBLE
 
-%type  <string> content_parameter_value
+%type  <string> content_disposition
+%type  <string> contenttype_parameter_value
 %type  <string> mimetype
 %type  <string> body
 
@@ -246,21 +252,14 @@ mail_header:
 contenttype_header:
 	CONTENTTYPE_HEADER COLON mimetype EOL
 	{
-		struct mm_mimeheader *hdr;
-		hdr = mm_mimeheader_generate($1, $3);
-		mm_mimepart_attachheader(current_mimepart, hdr);
-
 		mm_content_settype(ctype, "%s", $3);
 		mm_mimepart_attachcontenttype(current_mimepart, ctype);
 		dprintf("Content-Type -> %s\n", $3);
 		ctype = mm_content_new();
 	}
 	|
-	CONTENTTYPE_HEADER COLON mimetype content_parameters EOL
+	CONTENTTYPE_HEADER COLON mimetype contenttype_parameters EOL
 	{
-		struct mm_mimeheader *hdr;
-		hdr = mm_mimeheader_generate($1, $3);
-		mm_mimepart_attachheader(current_mimepart, hdr);
 		mm_content_settype(ctype, "%s", $3);
 		mm_mimepart_attachcontenttype(current_mimepart, ctype);
 		dprintf("Content-Type (P) -> %s\n", $3);
@@ -269,14 +268,35 @@ contenttype_header:
 	;
 
 contentdisposition_header:
-	CONTENTDISPOSITION_HEADER COLON WORD EOL
+	CONTENTDISPOSITION_HEADER COLON content_disposition EOL
 	{
 		dprintf("Content-Disposition -> %s\n", $3);
 	}
 	|
-	CONTENTDISPOSITION_HEADER COLON WORD content_parameters EOL
+	CONTENTDISPOSITION_HEADER COLON content_disposition content_disposition_parameters EOL
 	{
 		dprintf("Content-Disposition (P) -> %s\n", $3);
+	}
+	;
+
+content_disposition:
+	WORD
+	{
+		/*
+		 * According to RFC 2183, the content disposition value may
+		 * only be "inline", "attachment" or an extension token. We
+		 * catch invalid values here if we are not in loose parsing
+		 * mode.
+		 */
+		if (strcasecmp($1, "inline") && strcasecmp($1, "attachment")
+		    && strncasecmp($1, "X-", 2)) {
+			if (parsemode != MM_PARSE_LOOSE) {
+				mm_errno = MM_ERROR_MIME;
+				mm_error_setmsg("invalid content-disposition");
+				return(-1);
+			}	
+		}
+		$$ = $1;
 	}
 	;
 
@@ -313,38 +333,81 @@ mimetype:
 	}	
 	;
 
-content_parameters: 
-	SEMICOLON content_parameter content_parameters
+contenttype_parameters: 
+	SEMICOLON contenttype_parameter contenttype_parameters
 	|
-	SEMICOLON content_parameter
+	SEMICOLON contenttype_parameter
 	|
 	SEMICOLON
 	;
 
-content_parameter:	
-	WORD EQUAL content_parameter_value
+content_disposition_parameters:
+	SEMICOLON content_disposition_parameter content_disposition_parameters
+	|
+	SEMICOLON content_disposition_parameter
+	|
+	SEMICOLON
+	;
+
+contenttype_parameter:	
+	WORD EQUAL contenttype_parameter_value
 	{
 		struct mm_param *param;
 		param = mm_param_new();
 		
 		dprintf("Param: '%s', Value: '%s'\n", $1, $3);
 		
+		/* Catch an eventual boundary identifier */
 		if (!strcasecmp($1, "boundary")) {
 			if (boundary_string == NULL) {
 				set_boundary($3);
 			} else {
-				//printf("Double Boundary not allowed!\n");
-			}	
+				if (parsemode != MM_PARSE_LOOSE) {
+					mm_errno = MM_ERROR_MIME;
+					mm_error_setmsg("duplicate boundary "
+					    "found");
+					return -1;
+				}
+			}
 		}
 
-		param->name = strdup($1);
-		param->value = strdup($3);
+		param->name = xstrdup($1);
+		param->value = xstrdup($3);
 
 		mm_content_attachparam(ctype, param);
 	}
 	;
 
-content_parameter_value:
+content_disposition_parameter:
+	WORD EQUAL contenttype_parameter_value
+	{
+		if (!strcasecmp($3, "filename") 
+		    && current_mimepart->filename == NULL) {
+			current_mimepart->filename = xstrdup($3);
+		} else if (!strcasecmp($3, "creation-date")
+		    && current_mimepart->creation_date == NULL) {
+			current_mimepart->creation_date = xstrdup($3);
+		} else if (!strcasecmp($3, "modification-date")
+		    && current_mimepart->modification_date == NULL) {
+			current_mimepart->modification_date = xstrdup($3);
+		} else if (!strcasecmp($3, "read-date")
+		    && current_mimepart->read_date == NULL) {
+		    	current_mimepart->read_date = xstrdup($3);
+		} else if (!strcasecmp($3, "size")
+		    && current_mimepart->disposition_size == NULL) {
+		    	current_mimepart->disposition_size = xstrdup($3);
+		} else {
+			if (parsemode != MM_PARSE_LOOSE) {
+				mm_errno = MM_ERROR_MIME;
+				mm_error_setmsg("invalid disposition "
+				    "parameter");
+				return -1;
+			}
+		}	
+	}
+	;
+
+contenttype_parameter_value:
 	WORD
 	{
 		$$ = $1;
@@ -406,85 +469,101 @@ endboundary	:
 body:
 	BODY
 	{
-		size_t body_size;
-		size_t current;
-		size_t start;
-		size_t offset;
 		char *body;
+		size_t offset;
 
 		dprintf("BODY (%d/%d), SIZE %d\n", $1.start, $1.end, $1.end - $1.start);
 
-		/* calculate start and offset markers for the opaque and
-		 * header stripped body message.
-		 */
-		if ($1.opaque_start > 0) {
-			/* Multipart message */
-			if ($1.start) {
-				if ($1.start < $1.opaque_start) {
-					mm_errno = MM_ERROR_PARSE;
-					mm_error_setmsg("internal incosistency (S:%d/O:%d)",
-					    $1.start,
-					    $1.opaque_start);
-					return(-1);
-				}
-				start = $1.opaque_start;
-				offset = $1.start - start;
-			/* Flat message */	
-			} else {	
-				start = $1.opaque_start;
-				offset = 0;
-			}	
-		} else {
-			start = $1.start;
-			offset = 0;
-		}
+		body = PARSE_readmessagepart($1.opaque_start, $1.start, $1.end,
+		    &offset);
 
-		/* The next three cases should NOT happen anytime */
-		if ($1.end <= start) {
-			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("internal incosistency,2");
-			return(-1);
-		}
-		if (start < offset) {
-			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("internal incosistency, S:%d,O:%d,L:%d", start, offset, lineno);
-			return(-1);
-		}	
-		if (start < 0 || $1.end < 0) {
-			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("internal incosistency,4");
-			return(-1);
-		}	
-
-		/* XXX: do we want to enforce a maximum body size? make it a
-		 * parser option? */
-
-		/* Read in the body message */
-		body_size = $1.end - start;
-		body = (char *)malloc(body_size + 1);
 		if (body == NULL) {
-			mm_errno = MM_ERROR_ERRNO;
 			return(-1);
 		}	
-		
-		/* Get the message body either from a stream or a memory
-		 * buffer.
-		 */
-		if (mm_yyin != NULL) {
-			current = ftell(curin);
-			fseek(curin, start - 1, SEEK_SET);
-			fread(body, body_size - 1, 1, curin);
-			fseek(curin, current, SEEK_SET);
-		} else if (message_buffer != NULL) {
-			strlcpy(body, message_buffer + start - 1, body_size);
-		} 
-
 		current_mimepart->opaque_body = body;
 		current_mimepart->body = body + offset;
 	}
 	;
 
 %%
+
+static char *
+PARSE_readmessagepart(size_t opaque_start, size_t real_start, size_t end, 
+    size_t *offset)
+{
+	size_t body_size;
+	size_t current;
+	size_t start;
+	char *body;
+
+	/* calculate start and offset markers for the opaque and
+	 * header stripped body message.
+	 */
+	if (opaque_start > 0) {
+		/* Multipart message */
+		if (real_start) {
+			if (real_start < opaque_start) {
+				mm_errno = MM_ERROR_PARSE;
+				mm_error_setmsg("internal incosistency (S:%d/O:%d)",
+				    real_start,
+				    opaque_start);
+				return(NULL);
+			}
+			start = opaque_start;
+			*offset = real_start - start;
+		/* Flat message */	
+		} else {	
+			start = opaque_start;
+			*offset = 0;
+		}	
+	} else {
+		start = real_start;
+		*offset = 0;
+	}
+
+	/* The next three cases should NOT happen anytime */
+	if (end <= start) {
+		mm_errno = MM_ERROR_PARSE;
+		mm_error_setmsg("internal incosistency,2");
+		return(NULL);
+	}
+	if (start < *offset) {
+		mm_errno = MM_ERROR_PARSE;
+		mm_error_setmsg("internal incosistency, S:%d,O:%d,L:%d", start, offset, lineno);
+		return(NULL);
+	}	
+	if (start < 0 || end < 0) {
+		mm_errno = MM_ERROR_PARSE;
+		mm_error_setmsg("internal incosistency,4");
+		return(NULL);
+	}	
+
+	/* XXX: do we want to enforce a maximum body size? make it a
+	 * parser option? */
+
+	/* Read in the body message */
+	body_size = end - start;
+	body = (char *)malloc(body_size + 1);
+	if (body == NULL) {
+		mm_errno = MM_ERROR_ERRNO;
+		return(NULL);
+	}	
+		
+	/* Get the message body either from a stream or a memory
+	 * buffer.
+	 */
+	if (mm_yyin != NULL) {
+		current = ftell(curin);
+		fseek(curin, start - 1, SEEK_SET);
+		fread(body, body_size - 1, 1, curin);
+		fseek(curin, current, SEEK_SET);
+	} else if (message_buffer != NULL) {
+		strlcpy(body, message_buffer + start - 1, body_size);
+	} 
+	
+	return(body);
+
+}
 
 int
 mm_yyerror(const char *str)
@@ -557,7 +636,7 @@ dprintf(const char *fmt, ...)
  * Initializes the parser engine.
  */
 int
-PARSER_initialize(MM_CTX *newctx)
+PARSER_initialize(MM_CTX *newctx, int mode)
 {
 	if (ctx != NULL) {
 		xfree(ctx);
@@ -573,6 +652,8 @@ PARSER_initialize(MM_CTX *newctx)
 	}	
 
 	ctx = newctx;
+	parsemode = mode;
+
 	envelope = mm_mimepart_new();
 	current_mimepart = envelope;
 	ctype = mm_content_new();

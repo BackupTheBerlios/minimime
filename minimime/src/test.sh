@@ -19,7 +19,7 @@ M_ERRORS=0
 M_INVALID=""
 for f in ${DIRECTORY}/${FILES}; do
 	if [ -f "${f}" ]; then
-		TESTS=$((TESTS + 1))
+		TESTS=$((TESTS + 2))
 		echo -n "Running test for $f (file)... "
 		output=`./minimime $f 2>&1`
 		[ $? != 0 ] && {

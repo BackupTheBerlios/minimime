@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.4 2004/06/04 14:27:29 jfi Exp $
+ * $Id: mm_context.c,v 1.5 2004/06/07 14:11:02 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -44,42 +44,24 @@
  * Modules for manipulating MiniMIME contexts
  */
 
-struct mm_required_headerfields
-{
-	int gotit;
-	const char *name;
-};
-
-static struct mm_required_headerfields required_headers[] = {
-	{
-		0,
-		"From"
-	},
-	{
-		0,
-		"To"
-	},
-	{
-		0,
-		"Date"
-	},
-	{
-		0,
-		NULL
-	}
-};
-
 /** 
  * @{
  * @name Manipulating MiniMIME contexts
  */
 
 /**
- * Creates a new MiniMIME context object. This object must later be freed
- * using the mm_context_free() function.
+ * Creates a new MiniMIME context object. 
  *
  * @return a new MiniMIME context object
- * @ref mm_context_free
+ * @see mm_context_free
+ *
+ * This function creates a new MiniMIME context, which will hold a message.
+ * The memory needed is allocated dynamically and should later be free'd
+ * using mm_context_free().
+ *
+ * Before a context can be created, the MiniMIME library needs to be
+ * initialized properly using mm_library_init().
+ *
  */
 MM_CTX *
 mm_context_new(void)
@@ -91,6 +73,8 @@ mm_context_new(void)
 	ctx = (MM_CTX *)xmalloc(sizeof(MM_CTX));
 	ctx->messagetype = MM_MSGTYPE_FLAT; /* This is the default */
 	ctx->boundary = NULL;
+	ctx->preamble = xstrdup("This is a message in MIME format, generated "
+	    "by MiniMIME 0.1");
 
 	TAILQ_INIT(&ctx->parts);
 	SLIST_INIT(&ctx->warnings);
@@ -99,11 +83,15 @@ mm_context_new(void)
 }
 
 /**
- * Releases all memory associated with MiniMIME context object that was
- * created using mm_context_new(). 
+ * Releases a MiniMIME context object
  *
- * @param ctx the MiniMIME context object to free
- * @ref mm_context_new
+ * @param ctx A valid MiniMIME context
+ * @see mm_context_new
+ *
+ * This function releases all memory associated with MiniMIME context object
+ * that was created using mm_context_new(). It will also release all memory
+ * used for the MIME parts attached, and their specific properties (such as
+ * Content-Type information, headers, and the body data).
  */
 void
 mm_context_free(MM_CTX *ctx)
@@ -121,6 +109,11 @@ mm_context_free(MM_CTX *ctx)
 	if (ctx->boundary != NULL) {
 		xfree(ctx->boundary);
 		ctx->boundary = NULL;
+	}
+
+	if (ctx->preamble != NULL) {
+		xfree(ctx->preamble);
+		ctx->preamble = NULL;
 	}
 
 	SLIST_FOREACH(warning, &ctx->warnings, next) {
@@ -142,6 +135,12 @@ mm_context_free(MM_CTX *ctx)
  * @param ctx the MiniMIME context
  * @param part the MIME part object to attach
  * @return 0 on success or -1 on failure. Sets mm_errno on failure.
+ *
+ * This function attaches a MIME part to a context, appending it to the end
+ * of the message. 
+ *
+ * The MIME part should be initialized before attaching it using 
+ * mm_mimepart_new().
  */
 int
 mm_context_attachpart(MM_CTX *ctx, struct mm_mimepart *part)
@@ -159,13 +158,60 @@ mm_context_attachpart(MM_CTX *ctx, struct mm_mimepart *part)
 }
 
 /**
+ * Attaches a MIME part object to a MiniMIME context at a given position
+ *
+ * @param ctx A valid MiniMIME context
+ * @param part The MIME part object to attach
+ * @param pos After which part to attach the object
+ * @return 0 on success or -1 if the given position is invalid
+ * @see mm_context_attachpart
+ *
+ * This function attaches a MIME part object after a given position in the
+ * specified context. If the position is invalid (out of range), the part
+ * will not get attached to the message and the function returns -1. If
+ * the index was in range, the MIME part will get attached after the MIME
+ * part at the given position, moving any possible following MIME parts one
+ * down the hierarchy.
+ */
+int
+mm_context_attachpart_after(MM_CTX *ctx, struct mm_mimepart *part, int pos)
+{
+	struct mm_mimepart *p;
+	int where;
+
+	where = 0;
+	p = NULL;
+
+	TAILQ_FOREACH(part, &ctx->parts, next) {
+		if (where == pos) {
+			p = part;
+		}	
+	}
+
+	if (p == NULL) {
+		return(-1);
+	}
+
+	TAILQ_INSERT_AFTER(&ctx->parts, p, part, next);
+
+	return(0);
+}
+
+/**
  * Deletes a MIME part object from a MiniMIME context
  *
- * @param ctx The MiniMIME context
+ * @param ctx A valid MiniMIME context object
  * @param which The number of the MIME part object to delete
  * @param freemem Whether to free the memory associated with the MIME part
  *        object
  * @return 0 on success or -1 on failure. Sets mm_errno on failure.
+ *
+ * This function deletes a MIME part from a given context. The MIME part to
+ * delete is specified as numerical index by the parameter ``which''. If the
+ * parameter ``freemem'' is set to anything greater than 0, the memory that
+ * is associated will be free'd by using mm_mimepart_free(), otherwise the
+ * memory is left untouched (if you still have a pointer to the MIME part
+ * around).
  */
 int
 mm_context_deletepart(MM_CTX *ctx, int which, int freemem)
@@ -248,65 +294,6 @@ mm_context_getpart(MM_CTX *ctx, int which)
 	return NULL;
 }
 
-static void
-mm_context_lookupheader(const char *name, struct mm_required_headerfields headers[])
-{
-	int i;
-
-	for (i = 0; headers[i].name != NULL; i++) {
-		if (!strcasecmp(name, headers[i].name)) {
-			headers[i].gotit = 1;
-			break;
-		}
-	}
-}
-
-/**
- * Checks whether a made up message conforms MIME standards 
- *
- * @param ctx A valid MiniMIME context
- * @return 0 if the message checked is compliant or -1 if not.
- * @note Sets mm_errno in case of an error
- *
- */
-int
-mm_context_finalize(MM_CTX *ctx)
-{
-	struct mm_mimeheader *header;
-	struct mm_mimepart *part;
-	int i;
-
-	part = NULL;
-	header = NULL;
-
-	part = mm_context_getpart(ctx, 0);
-	if (part == NULL) {
-		mm_errno = MM_ERROR_PROGRAM;
-		mm_error_setmsg("No such MIME part: 0");
-		return -1;
-	}
-
-	TAILQ_FOREACH(header, &part->headers, next) {
-		mm_context_lookupheader(header->name, required_headers);
-	}
-
-	for (i = 0; required_headers[i].name != NULL; i++) {
-		if (required_headers[i].gotit == 0) {
-			mm_errno = MM_ERROR_MIME;
-			mm_error_setmsg("Required header field missing: %s",
-			    required_headers[i].name);
-			goto cleanup;
-		}
-	}
-	
-cleanup:
-	if (mm_errno != MM_ERROR_NONE) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
 /**
  * Checks whether a given context represents a composite (multipart) message
  *
@@ -334,6 +321,50 @@ mm_context_haswarnings(MM_CTX *ctx)
 	}
 }
 
+char *
+mm_context_generateboundary(MM_CTX *ctx)
+{
+	return mm_mimeutil_genboundary("++MiniMIME++", 20);
+}
+
+/**
+ * Sets a preamble for the given MiniMIME context
+ *
+ * @param ctx A valid MiniMIME context
+ * @param preamble The preamble to set
+ * @return 0 on success or -1 on failure
+ *
+ * This function sets the MIME preamble (the text between the end of envelope
+ * headers and the beginning of the first MIME part) for a given context
+ * object. If preamble is a NULL-pointer then the preamble will be deleted,
+ * and the currently associated memory will be free automagically.
+ */
+int
+mm_context_setpreamble(MM_CTX *ctx, char *preamble)
+{
+	if (ctx == NULL)
+		return(-1);
+
+	if (preamble == NULL) {
+		if (ctx->preamble != NULL) {
+			xfree(ctx->preamble);
+		}
+		ctx->preamble = NULL;
+	} else {	
+		ctx->preamble = xstrdup(preamble);
+	}	
+	return(0);
+}
+
+char *
+mm_context_getpreamble(MM_CTX *ctx)
+{
+	if (ctx == NULL)
+		return(NULL);
+
+	return(ctx->preamble);	
+}
+
 /**
  * Creates an ASCII message of the specified context
  *
@@ -341,32 +372,134 @@ mm_context_haswarnings(MM_CTX *ctx)
  * @param flat Where to store the message
  * @param opaque Whether the MIME parts should be included opaque
  *
+ * This function ``flattens'' a MiniMIME context, that is, it creates an ASCII
+ * represantation of the message the context contains.
+ *
+ * Great care is taken to not produce invalid MIME output.
  */
 int
-mm_context_flatten(MM_CTX *ctx, char **flat, int opaque)
+mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 {
 	struct mm_mimepart *part;
 	char *message;
 	char *flatpart;
+	char *buf;
+	char *envelope_headers;
 	size_t message_size;
+	size_t tmp_size;
 	char envelope;
 
 	mm_errno = MM_ERROR_NONE;
 	envelope = 1;
 
-	TAILQ_FOREACH(part, &ctx->parts, next) {
-		if (envelope) {
-			envelope = 0;
-			continue;
-		}	
-		/*
-		if (mm_mimepart_flatten(part, &flatpart, opaque) == -1) {
-		}
-		*/
-		
-		message_size += strlen(flatpart);
+	message = NULL;
+	message_size = 0;
+
+	if (ctx->boundary == NULL && mm_context_iscomposite(ctx)) {
+		mm_context_generateboundary(ctx);
 	}
 
+	TAILQ_FOREACH(part, &ctx->parts, next) {
+		/* We need to make sure we that have a Content-Type object */
+		if (part->type == NULL) {
+			if (mm_mimepart_setdefaultcontenttype(part) == -1) {
+				goto cleanup;
+			}	
+		}
+
+		if (envelope) {
+			if (mm_envelope_getheaders(ctx, &envelope_headers,
+			    &tmp_size) == -1) {
+			    	return -1;
+			}
+			
+			message = envelope_headers;
+			message_size = tmp_size;
+			envelope = 0;
+
+			if (ctx->preamble != NULL && mm_context_iscomposite(ctx)) {
+				tmp_size += strlen(ctx->preamble) 
+				    + (strlen("\r\n") * 2);
+				buf = (char *)xrealloc(message, tmp_size);
+				if (buf == NULL) {
+					goto cleanup;
+				}
+				message_size += tmp_size;
+				strlcat(message, "\r\n", message_size);
+				strlcat(message, ctx->preamble, message_size);
+				strlcat(message, "\r\n", message_size);
+			}
+		} else {
+			/* Append a boundary if necessary */
+			if (ctx->boundary != NULL) {
+				tmp_size = strlen(ctx->boundary) + 
+				    (strlen("\r\n") * 2) + strlen("--");
+				buf = (char *)xrealloc(message, message_size
+				    + tmp_size);
+				if (buf == NULL) {
+					goto cleanup;
+				}
+				message_size += tmp_size;
+				message = buf;
+				strlcat(message, "\r\n", message_size);
+				strlcat(message, "--", message_size);
+				strlcat(message, ctx->boundary, message_size);
+				strlcat(message, "\r\n", message_size);
+			}
+
+			if (mm_mimepart_flatten(part, &flatpart, &tmp_size, 
+			    opaque) == -1) {
+				goto cleanup;
+			}
+			
+			if (tmp_size < 1) {
+				goto cleanup;
+			}
+			
+			buf = (char *) xrealloc(message, message_size 
+			    + tmp_size);
+			if (buf == NULL) {
+				goto cleanup;
+			}
+			
+			message_size += tmp_size;
+			message = buf;
+			
+			strlcat(message, flatpart, message_size);
+			xfree(flatpart);
+			flatpart = NULL;
+		}	
+	}
+	
+	/* Append end boundary */
+	if (ctx->boundary != NULL && mm_context_iscomposite(ctx)) {
+		tmp_size = strlen(ctx->boundary) + (strlen("\r\n") * 2) 
+		    + (strlen("--") * 2);
+		buf = (char *)xrealloc(message, message_size + tmp_size);
+		if (buf == NULL) {
+			goto cleanup;
+		}
+		
+		message_size += tmp_size;
+		message = buf;
+		
+		strlcat(message, "\r\n", message_size);
+		strlcat(message, "--", message_size);
+		strlcat(message, ctx->boundary, message_size);
+		strlcat(message, "--", message_size);
+		strlcat(message, "\r\n", message_size);
+	}
+	*flat = message;
+	*length = message_size;
+
+	return 0;
+
+cleanup:
+	if (message != NULL) {
+		xfree(message);
+		message = NULL;
+	}	
+	return -1;
 }
 
 /** @} */
