@@ -136,7 +136,6 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 }
 
 <INITIAL,headers>. {
-	BC(header);
 	dprintf("Unknown header char: %c\n", *yytext);
 	current_pos += yyleng;
 	return ANY;
@@ -219,7 +218,7 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 <headervalue>\= {
 	current_pos += yyleng;
 	return EQUAL;
-}	
+}
 
 <headervalue>\" {
 	BC(tspecialvalue);

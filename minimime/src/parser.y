@@ -58,7 +58,7 @@ extern FILE *mm_yyin;
 FILE *curin;
 
 static int mime_parts = 0;
-static int debug = 0;
+static int debug = 1;
 
 /* MiniMIME specific object pointers */
 static MM_CTX *ctx;
@@ -100,8 +100,8 @@ static int have_contenttype;
 %token <string> BOUNDARY
 %token <string> ENDBOUNDARY
 %token <string> CONTENTTYPE_VALUE 
-%token <string> WORD
 %token <string> TSPECIAL
+%token <string> WORD
 
 %token <position> BODY
 %token <position> PREAMBLE
@@ -297,7 +297,7 @@ invalid_header:
 	;
 
 any:
-	ANY any
+	any ANY
 	|
 	ANY
 	;
@@ -345,6 +345,12 @@ content_parameter:
 content_parameter_value:
 	WORD
 	{
+		$$ = $1;
+	}
+	|
+	TSPECIAL
+	{
+		/* For broken MIME implementation */
 		$$ = $1;
 	}
 	|
