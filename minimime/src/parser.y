@@ -304,8 +304,8 @@ content_parameters:
 content_parameter:	
 	WORD EQUAL content_parameter_value
 	{
-		struct mm_ct_param *param;
-		param = mm_ctparam_new();
+		struct mm_param *param;
+		param = mm_param_new();
 		
 		dprintf("Param: '%s', Value: '%s'\n", $1, $3);
 		

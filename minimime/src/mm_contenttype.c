@@ -1,5 +1,5 @@
 /*
- * $Id: mm_contenttype.c,v 1.2 2004/06/01 02:52:40 jfi Exp $
+ * $Id: mm_contenttype.c,v 1.3 2004/06/01 09:39:48 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -49,7 +49,7 @@
  * This module contains functions for manipulating Content-Type objects.
  */
 
-/** @defgroup contenttype Accessing and manipulating Content-Types */
+/** @defgroup contenttype Accessing and manipulating Content-Type objects */
 
 struct mm_encoding_mappings {
 	const char *idstring;
@@ -74,134 +74,6 @@ static const char *mm_composite_encodings[] = {
 	"binary",
 	NULL,
 };		
-
-/**
- * @{ 
- *
- * @name Functions for manipulating Content-Type parameters
- */
-
-/**
- * Creates a new object to hold a Content-Type parameter. 
- * The allocated memory must later be freed using mm_ctparam_free()
- *
- * @return An object representing a Content-Type parameter
- * @see mm_ctparam_free
- * @ingroup contenttype
- */
-struct mm_ct_param *
-mm_ctparam_new(void)
-{
-	struct mm_ct_param *param;
-
-	param = (struct mm_ct_param *)xmalloc(sizeof(struct mm_ct_param));
-	
-	param->name = NULL;
-	param->value = NULL;
-
-	return param;
-}
-
-/**
- * Releases all memory associated with a Content-Type parameter object.
- *
- * @param param The object to be freed
- * @return Nothing
- * @ingroup contenttype
- */
-void
-mm_ctparam_free(struct mm_ct_param *param)
-{
-	assert(param != NULL);
-
-	if (param->name != NULL) {
-		xfree(param->name);
-		param->name = NULL;
-	}
-	if (param->value != NULL) {
-		xfree(param->value);
-		param->value = NULL;
-	}
-	xfree(param);
-}
-
-/**
- * Generates a new Content-Type parameter with the given name and value
- *
- * @param name The name of the Content-Type parameter
- * @param value The value of the Content-Type parameter
- * @returns A new Content-Type parameter object
- * @see mm_ctparam_free
- *
- * This function generates a new Content-Type parameter, with the name
- * and value given as the arguments. The needed memory for the operation
- * is allocated dynamically. It stores a copy of name and value in the
- * actual object, so the memory holding the arguments can safely be
- * freed after successfull return of this function.
- */
-struct mm_ct_param *
-mm_ctparam_generate(const char *name, const char *value)
-{
-	struct mm_ct_param *param;
-
-	param = mm_ctparam_new();
-
-	param->name = xstrdup(name);
-	param->value = xstrdup(value);
-	
-	return param;
-}
-
-/**
- * Sets the name of the given Content-Type parameter
- *
- * @param param A valid Content-Type parameter object
- * @param name The new name of the parameter
- * @param copy If set to > 0, copy the value stored in name
- * @returns The address of the previous name for passing to free()
- */
-char *
-mm_ctparam_setname(struct mm_ct_param *param, const char *name, int copy)
-{
-	char *retadr;
-	assert(param != NULL);
-
-	retadr = param->name;
-
-	if (copy)
-		param->name = xstrdup(name);
-	else
-		param->name = (char *)name;
-
-	return retadr;	
-}
-
-/**
- * Sets the value of the given Content-Type parameter
- *
- * @param param A valid Content-Type parameter object
- * @param name The new value for the parameter
- * @param copy If set to > 0, copy the value stored in value
- * @returns The address of the previous value for passing to free()
- */
-char *
-mm_ctparam_setvalue(struct mm_ct_param *param, const char *value, int copy)
-{
-	char *retadr;
-	assert(param != NULL);
-
-	retadr = param->value;
-
-	if (copy)
-		param->value = xstrdup(value);
-	else
-		param->value = (char *)value;
-
-	return retadr;	
-}
-
-
-/** @} */
 
 /** @{
  * @name Functions for manipulating Content-Type objects
@@ -243,7 +115,7 @@ mm_content_new(void)
 void
 mm_content_free(struct mm_content *ct)
 {
-	struct mm_ct_param *param;
+	struct mm_param *param;
 
 	assert(ct != NULL);
 
@@ -261,8 +133,8 @@ mm_content_free(struct mm_content *ct)
 	}
 
 	SLIST_FOREACH(param, &ct->params, next) {
-		SLIST_REMOVE(&ct->params, param, mm_ct_param, next);
-		mm_ctparam_free(param);
+		SLIST_REMOVE(&ct->params, param, mm_param, next);
+		mm_param_free(param);
 	}	
 
 	xfree(ct);
@@ -277,9 +149,9 @@ mm_content_free(struct mm_content *ct)
  * @ingroup contenttype
  */
 int
-mm_content_attachparam(struct mm_content *ct, struct mm_ct_param *param)
+mm_content_attachparam(struct mm_content *ct, struct mm_param *param)
 {
-	struct mm_ct_param *tparam, *lparam;
+	struct mm_param *tparam, *lparam;
 
 	assert(ct != NULL);
 	assert(param != NULL);
@@ -373,7 +245,7 @@ mm_content_parse(const char *string, int flags)
 	 */
 	/** @bug We are not able to parse tspecials this way... */
 	while ((token = strsep(&buf, ";")) != NULL) {
-		struct mm_ct_param *param;
+		struct mm_param *param;
 		ttoken = strsep(&token, "=");
 		if (ttoken == NULL) {
 			mm_errno = MM_ERROR_PARSE;
@@ -381,7 +253,7 @@ mm_content_parse(const char *string, int flags)
 			goto cleanup;
 		}
 		
-		param = mm_ctparam_new();
+		param = mm_param_new();
 		while (*ttoken && isspace(*ttoken)) {
 			ttoken++;
 		}
@@ -393,7 +265,7 @@ mm_content_parse(const char *string, int flags)
 		if (ttoken == NULL) {
 			mm_errno = MM_ERROR_PARSE;
 			mm_error_setmsg("could not parse parameter");
-			mm_ctparam_free(param);
+			mm_param_free(param);
 			goto cleanup;
 		}
 		if (*ttoken == '\"' || *ttoken == '\'') {
@@ -432,7 +304,7 @@ cleanup:
 char *
 mm_content_getparambyname(struct mm_content *ct, const char *name)
 {
-	struct mm_ct_param *param;
+	struct mm_param *param;
 
 	assert(ct != NULL);
 	
@@ -697,7 +569,7 @@ char *
 mm_content_paramstostring(struct mm_content *ct)
 {
 	size_t size, new_size;
-	struct mm_ct_param *param;
+	struct mm_param *param;
 	char *param_string, *cur_param;
 	char *buf;
 

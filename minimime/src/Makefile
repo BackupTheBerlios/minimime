@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.2 2004/06/01 02:52:40 jfi Exp $
+# $Id: Makefile,v 1.3 2004/06/01 09:39:48 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -20,6 +20,7 @@ SRCS= \
 	mm_header.c \
 	mm_mem.c \
 	mm_mimepart.c \
+	mm_param.c \
 	mm_parse.c \
 	mm_util.c \
 	mm_warnings.c

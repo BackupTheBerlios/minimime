@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.3 2004/06/01 06:51:47 jfi Exp $
+ * $Id: mm.h,v 1.4 2004/06/01 09:39:48 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -46,7 +46,7 @@
 
 SLIST_HEAD(mm_mimeheaders, mm_mimeheader);
 SLIST_HEAD(mm_mimeparts, mm_mimepart);
-SLIST_HEAD(mm_ct_params, mm_ct_param);
+SLIST_HEAD(mm_params, mm_param);
 SLIST_HEAD(mm_codecs, mm_codec);
 SLIST_HEAD(mm_warnings, mm_warning);
 
@@ -152,11 +152,11 @@ struct mm_mimeheader
 /**
  * Represents a MIME Content-Type parameter
  */
-struct mm_ct_param
+struct mm_param
 {
 	char *name; 
 	char *value; 
-	SLIST_ENTRY(mm_ct_param) next;
+	SLIST_ENTRY(mm_param) next;
 };
 
 /**
@@ -166,7 +166,7 @@ struct mm_content
 {
 	char *maintype;
 	char *subtype;
-	struct mm_ct_params params;
+	struct mm_params params;
 	char *encstring;
 	enum mm_encoding encoding;
 };
@@ -271,7 +271,7 @@ void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
 
 struct mm_content *mm_content_new(void);
 void mm_content_free(struct mm_content *);
-int mm_content_attachparam(struct mm_content *, struct mm_ct_param *);
+int mm_content_attachparam(struct mm_content *, struct mm_param *);
 struct mm_content *mm_content_parse(const char *, int);
 char *mm_content_getparambyname(struct mm_content *, const char *);
 int mm_content_setmaintype(struct mm_content *, char *, int);
@@ -284,8 +284,9 @@ int mm_content_iscomposite(struct mm_content *);
 int mm_content_isvalidencoding(const char *);
 int mm_content_setencoding(struct mm_content *, const char *);
 char *mm_content_paramstostring(struct mm_content *);
-struct mm_ct_param *mm_ctparam_new(void);
-void mm_ctparam_free(struct mm_ct_param *);
+
+struct mm_param *mm_param_new(void);
+void mm_param_free(struct mm_param *);
 
 char *mm_flatten_mimepart(struct mm_mimepart *);
 char *mm_flatten_context(MM_CTX *);
