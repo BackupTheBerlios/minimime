@@ -1,5 +1,5 @@
 /*
- * $Id: mm_envelope.c,v 1.1 2004/06/08 09:53:46 jfi Exp $
+ * $Id: mm_envelope.c,v 1.2 2004/06/09 09:45:23 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -45,6 +45,13 @@
  *
  * This module contains functions for accessing a message's envelope. This
  * are mainly wrapper functions for easy access.
+ */
+
+/** @defgroup envelope Accessing and manipulating a message's envelope
+ */
+
+/** @{
+ * @name Accessing and manipulating a message's envelope
  */
 
 /**
@@ -150,6 +157,68 @@ cleanup:
 }
 
 /**
+ * Sets a header field in the envelope
+ *
+ * @param ctx A valid MiniMIME context
+ * @param name The name of the header field to set
+ * @param fmt A format string specifying the value of the header field
+ * @return 0 on success or -1 on failure
+ *
+ * This function generates a new MIME header and attaches it to the first
+ * MIME part (the envelope) found in the given context. If no part is
+ * attached already, the function will return an error. The function will
+ * store a copy of ``name'' as the header's name field, and dynamically
+ * allocate the memory needed to build the format string.
+ */
+int
+mm_envelope_setheader(MM_CTX *ctx, const char *name, const char *fmt, ...)
+{
+	va_list ap;
+	char *buf;
+	struct mm_mimeheader *hdr;
+	struct mm_mimepart *part;
+
+	part = mm_context_getpart(ctx, 0);
+	if (part == NULL) {
+		return(-1);
+	}	
+
+	hdr = mm_mimeheader_new();
+	if (hdr == NULL) {
+		return(-1);
+	}
+
+	hdr->name = xstrdup(name);
+
+	va_start(ap, fmt);
+	if (vasprintf(&buf, fmt, ap) == -1) {
+		goto cleanup;
+	}	
+	va_end(ap);
+
+	hdr->value = buf;
+
+	if (mm_mimepart_attachheader(part, hdr) == -1) {
+		goto cleanup;
+	}	
+
+	return(0);
+
+cleanup:
+	if (hdr != NULL) {
+		if (hdr->name != NULL) {
+			xfree(hdr->name);
+			hdr->name = NULL;
+		}
+		if (hdr->value != NULL) {
+			xfree(hdr->value);
+			hdr->value = NULL;
+		}
+	}	
+	return(-1);
+}
+
+/**
  * Gets the list of recipients for a MIME message
  *
  * @param ctx A valid MiniMIME context
@@ -196,3 +265,5 @@ mm_envelope_getrecipients(MM_CTX *ctx, char **result, size_t *length)
 	
 	return 0;
 }
+
+/** @} */

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2004/06/08 09:53:02 jfi Exp $
+# $Id: Makefile,v 1.8 2004/06/09 09:45:23 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -98,7 +98,8 @@ y.tab.o: parser.y
 	$(YACC) -d -pmm_yy parser.y
 	$(CC) -c $(CFLAGS) -Wno-unused y.tab.c
 
-test: minimime 
+test: $(LIBNAME)
+	@cd tests && make
 	@echo "****************************************************************"
 	@echo Running testsuite for libminimime...
 	@echo "****************************************************************"
@@ -118,4 +119,4 @@ clean:
 	rm -f $(LIBNAME)
 	rm -f ${ARNAME}
 	rm -f .depend
-
+	cd tests && make clean

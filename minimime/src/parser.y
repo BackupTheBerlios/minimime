@@ -59,7 +59,7 @@ extern FILE *mm_yyin;
 FILE *curin;
 
 static int mime_parts = 0;
-static int debug = 0;
+static int debug = 1;
 
 /* MiniMIME specific object pointers */
 static MM_CTX *ctx;
@@ -195,6 +195,7 @@ preamble:
 				return(-1);
 			}
 			ctx->preamble = preamble;
+			dprintf("PREAMBLE:\n%s\n", preamble);
 		}
 	}
 	|
@@ -277,7 +278,7 @@ mail_header:
 			return(-1);
 		}	
 		
-		hdr = mm_mimeheader_generate($1, strdup(""));
+		hdr = mm_mimeheader_generate($1, xstrdup(""));
 		mm_mimepart_attachheader(current_mimepart, hdr);
 	}
 	;
@@ -498,7 +499,7 @@ boundary	:
 		}
 		if (strcmp(boundary_string, $1)) {
 			mm_errno = MM_ERROR_PARSE;
-			mm_error_setmsg("invalid boundary: %s", $1);
+			mm_error_setmsg("invalid boundary: '%s' (%d)", $1, strlen($1));
 			mm_error_setlineno(lineno);
 			return(-1);
 		}

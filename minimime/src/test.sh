@@ -1,15 +1,15 @@
 #!/bin/sh
 # MiniMIME test cases
 
-[ ! -x ./minimime ] && {
-	echo "You need to compile MiniMIME first to accomplish tests"
+[ ! -x ./tests/parse -o ! -x ./tests/create ] && {
+	echo "You need to compile the test suite first to accomplish tests"
 	exit 1
 }
 
-LD_LIBRARY_PATH=.
+LD_LIBRARY_PATH=${PWD}
 export LD_LIBRARY_PATH
 
-DIRECTORY=${1:-test}
+DIRECTORY=${1:-tests/messages}
 FILES=${2:-"*"}
 
 TESTS=0
@@ -20,8 +20,8 @@ M_INVALID=""
 for f in ${DIRECTORY}/${FILES}; do
 	if [ -f "${f}" ]; then
 		TESTS=$((TESTS + 2))
-		echo -n "Running test for $f (file)... "
-		output=`./minimime $f 2>&1`
+		echo -n "Running PARSER test for $f (file)... "
+		output=`./tests/parse $f 2>&1`
 		[ $? != 0 ] && {
 			echo "FAILED ($output)"
 			F_ERRORS=$((F_ERRORS + 1))
@@ -29,8 +29,8 @@ for f in ${DIRECTORY}/${FILES}; do
 		} || {
 			echo "PASSED"
 		}
-		echo -n "Running test for $f (memory)... "
-		output=`./minimime -m $f 2>&1`
+		echo -n "Running PARSER test for $f (memory)... "
+		output=`./tests/parse -m $f 2>&1`
 		[ $? != 0 ] && {
 			echo "FAILED ($output)"
 			M_ERRORS=$((M_ERRORS + 1))

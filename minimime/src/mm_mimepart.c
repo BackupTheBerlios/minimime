@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.5 2004/06/07 14:11:02 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.6 2004/06/09 09:45:23 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -115,6 +115,8 @@ mm_mimepart_fromfile(const char *filename)
 	size_t r;
 	struct stat st;
 	struct mm_mimepart *part;
+
+	mm_errno = MM_ERROR_NONE;
 
 	if ((fd = open(filename, O_RDONLY)) == -1) {
 		mm_errno = MM_ERROR_ERRNO;
@@ -455,6 +457,25 @@ mm_mimepart_setbody(struct mm_mimepart *part, const char *data)
 }
 
 /**
+ * Gets the length of a given MIME part object
+ *
+ * @param part A valid MIME part object
+ * @returns The size of the part's body in byte.
+ *
+ * This function returns the total length of the given MIME part's body. The
+ * length does not include the headers of the MIME parts. If the function
+ * returns 0, no body part is set currently.
+ */
+size_t
+mm_mimepart_getlength(struct mm_mimepart *part)
+{
+	assert(part != NULL);
+
+	return part->length;
+}
+
+
+/**
  * Decodes a MIME part according to it's encoding using MiniMIME codecs
  *
  * @param A valid MIME part object
@@ -586,6 +607,7 @@ cleanup:
  * Sets the default Content-Type for a given MIME part
  *
  * @param part A valid MIME part object
+ * @param part Whether the Content-Type should be for composite or not
  * @return 0 on success or -1 on failure
  *
  * This function sets a default Content-Type according to RFC 2045 with a value
@@ -593,7 +615,7 @@ cleanup:
  * the MIME part in question does not have a valid Content-Type specification.
  */
 int
-mm_mimepart_setdefaultcontenttype(struct mm_mimepart *part)
+mm_mimepart_setdefaultcontenttype(struct mm_mimepart *part, int composite)
 {
 	struct mm_content *type;
 	struct mm_param *param;
@@ -608,14 +630,18 @@ mm_mimepart_setdefaultcontenttype(struct mm_mimepart *part)
 	}
 
 	type = mm_content_new();
-	type->maintype = xstrdup("text");
-	type->subtype = xstrdup("plain");
-	
-	param = mm_param_new();
-	param->name = xstrdup("charset");
-	param->value = xstrdup("us-ascii");
+	if (composite) {
+		type->maintype = xstrdup("multipart");
+		type->subtype = xstrdup("mixed");
+	} else {
+		type->maintype = xstrdup("text");
+		type->subtype = xstrdup("plain");
+		param = mm_param_new();
+		param->name = xstrdup("charset");
+		param->value = xstrdup("us-ascii");
+		mm_content_attachparam(type, param);
+	}	
 
-	mm_content_attachparam(type, param);
 	mm_mimepart_attachcontenttype(part, type);
 
 	return (0);
@@ -642,6 +668,16 @@ mm_mimepart_attachcontenttype(struct mm_mimepart *part, struct mm_content *ct)
 	part->type = ct;
 }
 
+/**
+ * Gets the Content-Type of a given MIME part object
+ *
+ * @param part A valid MIME part object
+ * @return The Content-Type object of the specified MIME part
+ *
+ * This function returns a pointer to the Content-Type object of the given
+ * MIME part. This pointer might be set to NULL, indicating that there is
+ * no Content-Type object for the given MIME part currently.
+ */
 struct mm_content *
 mm_mimepart_gettype(struct mm_mimepart *part)
 {
@@ -650,12 +686,4 @@ mm_mimepart_gettype(struct mm_mimepart *part)
 	return part->type;
 }
 
-size_t
-mm_mimepart_getlength(struct mm_mimepart *part)
-{
-	assert(part != NULL);
-
-	return part->length;
-}
-
-/** } */
+/** @} */

@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.12 2004/06/08 09:53:02 jfi Exp $
+ * $Id: mm.h,v 1.13 2004/06/09 09:45:23 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <assert.h>
 #include "mm_queue.h"
+#include "mm_mem.h"
 
 #define MM_MIME_LINELEN 998
 #define MM_BASE64_LINELEN 76
@@ -315,7 +316,13 @@ int mm_context_iscomposite(MM_CTX *);
 int mm_context_haswarnings(MM_CTX *);
 int mm_context_flatten(MM_CTX *, char **, size_t *, int);
 
+/**
+ * @}
+ * @{
+ * @name Accessing a message's envelope
+ */
 int mm_envelope_getheaders(MM_CTX *, char **, size_t *);
+int mm_envelope_setheader(MM_CTX *, const char *, const char *, ...);
 
 /**
  * @}
@@ -349,8 +356,9 @@ struct mm_content *mm_mimepart_gettype(struct mm_mimepart *);
 size_t mm_mimepart_getlength(struct mm_mimepart *);
 char *mm_mimepart_getbody(struct mm_mimepart *, int);
 void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
-int mm_mimepart_setdefaultcontenttype(struct mm_mimepart *);
+int mm_mimepart_setdefaultcontenttype(struct mm_mimepart *, int);
 int mm_mimepart_flatten(struct mm_mimepart *, char **, size_t *, int);
+struct mm_mimepart *mm_mimepart_fromfile(const char *);
 /** @} */
 
 struct mm_content *mm_content_new(void);

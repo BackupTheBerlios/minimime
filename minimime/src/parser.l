@@ -105,7 +105,7 @@ size_t postamble_end = 0;
 %s endoffile
 
 STRING	[a-zA-Z0-9\-\.\_]
-TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
+TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_\+'? ]
 TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 
 %%
@@ -281,7 +281,9 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 				return BODY;
 			}	
 		}
-	}
+	} else {
+		dprintf("FOO!\n");
+	}	
 
 	REJECT;
 }
@@ -321,7 +323,9 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 				return(BOUNDARY);
 			}
 		}
-	} 
+	} else {
+		dprintf("FOO\n");
+	}	
 
 	REJECT;
 }
@@ -331,7 +335,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 	lineno++;
 }
 
-<body>.+ {
+<body>[^\r\n]+ {
 	current_pos += yyleng;
 }
 
@@ -349,18 +353,19 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 }	
 
 <preamble,postamble>(\r\n|\n) {
+	dprintf("Preamble CR/LF at line %d\n", lineno);
 	lineno++; 
 	current_pos += yyleng;
 }	
 
-<boundary>.+ {
+<boundary>[^\r\n]+ {
 	mm_yylval.string = strdup(yytext);
-	dprintf("B: %s\n", yytext);
+	dprintf("B: '%s'\n", yytext);
 	current_pos += yyleng;
 	return BOUNDARY;
 }
 
-<endboundary>.+ {
+<endboundary>[^\r\n]+ {
 	mm_yylval.string = strdup(yytext);
 	dprintf("EB: %s\n", yytext);
 	current_pos += yyleng;
@@ -370,7 +375,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 <boundary>(\r\n|\n) {
 	BC(headers);
 	lineno++;
-	dprintf("Boundary end of line\n");
+	dprintf("Boundary end of line: %d\n", lineno);
 	current_pos += yyleng;
 	body_opaque_start = current_pos;
 	return EOL;
@@ -383,25 +388,16 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 	dprintf("Endboundary end of line\n");
 }
 
-<preamble>.+ {
+<preamble>. {
 	current_pos += yyleng;
 }
 
-<preamble>(\r\n|\n) {
-	lineno++;
+
+<postamble>. {
 	current_pos += yyleng;
 }
 
-<postamble>.+ {
-	current_pos += yyleng;
-}
-
-<postamble>(\r\n|\n) {
-	lineno++;
-	current_pos += yyleng;
-}	
-
-\n {
+(\r\n|\n) {
 	lineno++;
 	dprintf("End of header UNCLASSED!\n"); 
 	current_pos += yyleng;
@@ -409,7 +405,7 @@ TSPECIAL_LITE [a-zA-Z0-9)(<>@,-._+'?\[\]]
 }
 
 . {
-	dprintf("UC: %c in condition\n", *yytext, condition);
+	dprintf("UC: '%c' in condition\n", *yytext, condition);
 	current_pos += yyleng;
 	return((int)*yytext);
 }

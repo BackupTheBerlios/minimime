@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.6 2004/06/08 09:53:02 jfi Exp $
+ * $Id: mm_context.c,v 1.7 2004/06/09 09:45:23 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -44,8 +44,14 @@
  * Modules for manipulating MiniMIME contexts
  */
 
-/** 
- * @{
+/** @defgroup context Accessing and manipulating MIME contexts 
+ *
+ * Each message in MiniMIME is represented by a so called ``context''. A
+ * context holds all necessary information given about a MIME message, such
+ * as the envelope, all MIME parts etc.
+ */
+
+/** @{
  * @name Manipulating MiniMIME contexts
  */
 
@@ -453,14 +459,18 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 	}
 
 	TAILQ_FOREACH(part, &ctx->parts, next) {
-		/* We need to make sure we that have a Content-Type object */
-		if (part->type == NULL) {
-			if (mm_mimepart_setdefaultcontenttype(part) == -1) {
-				goto cleanup;
-			}	
-		}
-
 		if (envelope) {
+			if (part->type == NULL && mm_context_countparts(ctx) > 1) {
+				if (mm_mimepart_setdefaultcontenttype(part, 1) 
+				    == -1) {
+					goto cleanup;
+				}	
+				if (mm_context_generateboundary(ctx) == -1) {
+					goto cleanup;
+				}	
+				ctx->messagetype = MM_MSGTYPE_MULTIPART;
+			}
+			
 			if (mm_envelope_getheaders(ctx, &envelope_headers,
 			    &tmp_size) == -1) {
 			    	return -1;
@@ -478,15 +488,32 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 					goto cleanup;
 				}
 				message_size += tmp_size;
+				message = buf;
 				strlcat(message, "\r\n", message_size);
 				strlcat(message, ctx->preamble, message_size);
 				strlcat(message, "\r\n", message_size);
 			}
 		} else {
+			/* Enforce Content-Type if none exist */
+			if (part->type == NULL) {
+				if (mm_mimepart_setdefaultcontenttype(part, 0) 
+				    == -1) {
+					goto cleanup;
+				}	
+			}
+
 			/* Append a boundary if necessary */
 			if (ctx->boundary != NULL) {
 				tmp_size = strlen(ctx->boundary) + 
 				    (strlen("\r\n") * 2) + strlen("--");
+
+				if (tmp_size < 1) {
+					return(-1);
+				}	
+				if (message_size + tmp_size < 1) {
+					return(-1);
+				}
+
 				buf = (char *)xrealloc(message, message_size
 				    + tmp_size);
 				if (buf == NULL) {
@@ -535,13 +562,15 @@ mm_context_flatten(MM_CTX *ctx, char **flat, size_t *length, int opaque)
 		
 		message_size += tmp_size;
 		message = buf;
-		
-		strlcat(message, "\r\n", message_size);
+		if (message[strlen(message)-1] != 13)
+			strlcat(message, "\r", message_size);
+		strlcat(message, "\n", message_size);
 		strlcat(message, "--", message_size);
 		strlcat(message, ctx->boundary, message_size);
 		strlcat(message, "--", message_size);
 		strlcat(message, "\r\n", message_size);
 	}
+
 	*flat = message;
 	*length = message_size;
 

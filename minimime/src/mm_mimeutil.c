@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimeutil.c,v 1.1 2004/06/08 09:53:46 jfi Exp $
+ * $Id: mm_mimeutil.c,v 1.2 2004/06/09 09:45:23 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -105,7 +105,7 @@ mm_mimeutil_genboundary(char *prefix, size_t length)
 
 	total += length;
 
-	buf = (char *) xmalloc(total);
+	buf = (char *) xmalloc(total + 1);
 	if (buf == NULL) {
 		return(NULL);
 	}
@@ -116,7 +116,7 @@ mm_mimeutil_genboundary(char *prefix, size_t length)
 		strlcat(buf, prefix, total);
 	}
 
-	for (i = 0; i < length; i++) {
+	for (i = 0; i < length - 1; i++) {
 		int pos;
 		
 		pos = random() % strlen(boundary_charset);
