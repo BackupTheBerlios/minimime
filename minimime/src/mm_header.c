@@ -1,5 +1,5 @@
 /*
- * $Id: mm_header.c,v 1.5 2004/06/04 14:27:29 jfi Exp $
+ * $Id: mm_header.c,v 1.6 2004/06/05 09:11:56 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -89,53 +89,6 @@ mm_mimeheader_free(struct mm_mimeheader *header)
 
 	xfree(header);
 	header = NULL;
-}
-
-/**
- * Appends a value to a MIME header object
- *
- * @param header The MIME header which to append to
- * @param value The value which to append
- * @return 0 on success or -1 on failure
- *
- * This function appends a value to a MIME header, for example in case of a
- * continuation. It takes care that MIME limits, such as the 998 chars/line,
- * are not stepped over.
- */
-static int
-mm_mimeheader_append(struct mm_mimeheader *header, char *value)
-{
-	size_t new_hdrlen, skipped;
-	char *new, *append;
-
-	assert(header != NULL);
-	assert(value != NULL);
-
-	append = value;
-	skipped = 0;
-
-	/*
-	 * Skip all leading whitespaces, but remain one space.
-	 */
-	while (*append != '\0' && isspace(*append)) {
-		append++;
-		skipped++;
-	}
-	if (skipped) {
-		append--;
-		if (isspace(*append)) {
-			*append = ' ';
-		}
-	}	
-	
-	new_hdrlen = strlen(header->value) + strlen(append) + 1;
-	assert(new_hdrlen > 0);
-
-	new = xrealloc(header->value, new_hdrlen);
-	header->value = new;
-	strlcat(header->value, append, new_hdrlen);
-
-	return 0;
 }
 
 /**
