@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.8 2004/06/04 08:49:15 jfi Exp $
+ * $Id: mm.h,v 1.9 2004/06/04 09:36:11 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -121,6 +121,7 @@ struct mm_error_data
 {
 	int error_id;
 	int error_where;
+	int lineno;
 	char error_msg[128];
 };
 extern int mm_errno;
@@ -367,6 +368,7 @@ char *mm_base64_encode(char *, u_int32_t);
 
 void mm_error_init(void);
 void mm_error_setmsg(const char *, ...);
+void mm_error_setlineno(int lineno);
 char *mm_error_string(void);
 
 void mm_warning_add(MM_CTX *, int, const char *, ...);

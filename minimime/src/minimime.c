@@ -128,7 +128,7 @@ main(int argc, char **argv)
 		}
 
 		if (i == -1 || mm_errno != MM_ERROR_NONE) {	
-			printf("ERROR: %s\n", mm_error_string());
+			printf("ERROR: %s at line %d\n", mm_error_string(), mm_error_lineno());
 			exit(1);
 		}
 
