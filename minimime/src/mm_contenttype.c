@@ -1,5 +1,5 @@
 /*
- * $Id: mm_contenttype.c,v 1.1 2004/05/03 22:05:56 jfi Exp $
+ * $Id: mm_contenttype.c,v 1.2 2004/06/01 02:52:40 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -49,6 +49,8 @@
  * This module contains functions for manipulating Content-Type objects.
  */
 
+/** @defgroup contenttype Accessing and manipulating Content-Types */
+
 struct mm_encoding_mappings {
 	const char *idstring;
 	int type;
@@ -73,8 +75,6 @@ static const char *mm_composite_encodings[] = {
 	NULL,
 };		
 
-//static const char *quoted_charset = "()<>@,;:\"/[]?=";
-
 /**
  * @{ 
  *
@@ -86,7 +86,8 @@ static const char *mm_composite_encodings[] = {
  * The allocated memory must later be freed using mm_ctparam_free()
  *
  * @return An object representing a Content-Type parameter
- * @ref mm_ctparam_free
+ * @see mm_ctparam_free
+ * @ingroup contenttype
  */
 struct mm_ct_param *
 mm_ctparam_new(void)
@@ -106,6 +107,7 @@ mm_ctparam_new(void)
  *
  * @param param The object to be freed
  * @return Nothing
+ * @ingroup contenttype
  */
 void
 mm_ctparam_free(struct mm_ct_param *param)
@@ -123,6 +125,82 @@ mm_ctparam_free(struct mm_ct_param *param)
 	xfree(param);
 }
 
+/**
+ * Generates a new Content-Type parameter with the given name and value
+ *
+ * @param name The name of the Content-Type parameter
+ * @param value The value of the Content-Type parameter
+ * @returns A new Content-Type parameter object
+ * @see mm_ctparam_free
+ *
+ * This function generates a new Content-Type parameter, with the name
+ * and value given as the arguments. The needed memory for the operation
+ * is allocated dynamically. It stores a copy of name and value in the
+ * actual object, so the memory holding the arguments can safely be
+ * freed after successfull return of this function.
+ */
+struct mm_ct_param *
+mm_ctparam_generate(const char *name, const char *value)
+{
+	struct mm_ct_param *param;
+
+	param = mm_ctparam_new();
+
+	param->name = xstrdup(name);
+	param->value = xstrdup(value);
+	
+	return param;
+}
+
+/**
+ * Sets the name of the given Content-Type parameter
+ *
+ * @param param A valid Content-Type parameter object
+ * @param name The new name of the parameter
+ * @param copy If set to > 0, copy the value stored in name
+ * @returns The address of the previous name for passing to free()
+ */
+char *
+mm_ctparam_setname(struct mm_ct_param *param, const char *name, int copy)
+{
+	char *retadr;
+	assert(param != NULL);
+
+	retadr = param->name;
+
+	if (copy)
+		param->name = xstrdup(name);
+	else
+		param->name = (char *)name;
+
+	return retadr;	
+}
+
+/**
+ * Sets the value of the given Content-Type parameter
+ *
+ * @param param A valid Content-Type parameter object
+ * @param name The new value for the parameter
+ * @param copy If set to > 0, copy the value stored in value
+ * @returns The address of the previous value for passing to free()
+ */
+char *
+mm_ctparam_setvalue(struct mm_ct_param *param, const char *value, int copy)
+{
+	char *retadr;
+	assert(param != NULL);
+
+	retadr = param->value;
+
+	if (copy)
+		param->value = xstrdup(value);
+	else
+		param->value = (char *)value;
+
+	return retadr;	
+}
+
+
 /** @} */
 
 /** @{
@@ -135,6 +213,7 @@ mm_ctparam_free(struct mm_ct_param *param)
  *
  * @return An object representing a MIME Content-Type
  * @see mm_content_free
+ * @ingroup contenttype
  */
 struct mm_content *
 mm_content_new(void)
@@ -159,6 +238,7 @@ mm_content_new(void)
  *
  * @param ct A Content-Type object
  * @return Nothing
+ * @ingroup contenttype
  */
 void
 mm_content_free(struct mm_content *ct)
@@ -194,6 +274,7 @@ mm_content_free(struct mm_content *ct)
  * @param ct The target Content-Type object
  * @param param The Content-Type parameter which to attach
  * @return 0 on success and -1 on failure
+ * @ingroup contenttype
  */
 int
 mm_content_attachparam(struct mm_content *ct, struct mm_ct_param *param)
@@ -224,6 +305,7 @@ mm_content_attachparam(struct mm_content *ct, struct mm_ct_param *param)
  * @param flags parser flags
  * @return A Content-Type object on success or a NULL pointer on failure.
  * @see mm_parseflags 
+ * @ingroup contenttype
  */
 struct mm_content *
 mm_content_parse(const char *string, int flags)
@@ -345,6 +427,7 @@ cleanup:
  * @param ct the Content-Type object
  * @param name the name of the parameter to retrieve
  * @return The value of the parameter on success or a NULL pointer on failure
+ * @ingroup contenttype
  */
 char *
 mm_content_getparambyname(struct mm_content *ct, const char *name)
@@ -392,6 +475,13 @@ mm_content_setmaintype(struct mm_content *ct, char *value, int copy)
 	return 0;
 }
 
+/**
+ * Retrieves the main MIME type stored in a Content-Type object
+ *
+ * @param ct A valid Content-Type object
+ * @returns A pointer to the string representing the main type
+ * @ingroup contenttype
+ */
 char *
 mm_content_getmaintype(struct mm_content *ct)
 {
@@ -401,6 +491,13 @@ mm_content_getmaintype(struct mm_content *ct)
 	return ct->maintype;
 }
 
+/**
+ * Retrieves the sub MIME type stored in a Content-Type object
+ *
+ * @param ct A valid Content-Type object
+ * @return A pointer to the string holding the current sub MIME type
+ * @ingroup contenttype
+ */
 char *
 mm_content_getsubtype(struct mm_content *ct)
 {
@@ -418,7 +515,6 @@ mm_content_gettype(struct mm_content *ct)
 
 	return ct->subtype;
 }
-
 
 /**
  * Sets the MIME sub type for a MIME Content-Type object
@@ -488,6 +584,13 @@ mm_content_settype(struct mm_content *ct, const char *fmt, ...)
 	return 0;
 }
 
+/**
+ * Checks whether the Content-Type represents a composite message or not
+ *
+ * @param ct A valid Content-Type object
+ * @returns 1 if the Content-Type object represents a composite message or
+ *          0 if not.
+ */
 int
 mm_content_iscomposite(struct mm_content *ct)
 {
@@ -503,6 +606,13 @@ mm_content_iscomposite(struct mm_content *ct)
 	return 0;
 }
 
+/**
+ * Verifies whether a string represents a valid encoding or not.
+ *
+ * @param encoding The string to verify
+ * @return 1 if the encoding string is valid or 0 if not
+ *
+ */
 int
 mm_content_isvalidencoding(const char *encoding)
 {
@@ -569,6 +679,77 @@ mm_content_getencoding(struct mm_content *ct, const char *encoding)
 
 	/* Not found */
 	return MM_ENCODING_UNKNOWN;
+}
+
+/**
+ * Constructs a MIME conform string of Content-Type parameters.
+ *
+ * @param ct A valid Content Type object
+ * @return A pointer to a string representing the Content-Type parameters
+ *         in MIME terminology, or NULL if either the Content-Type object
+ *         is invalid, has no parameters or no memory could be allocated.
+ *
+ * This function constructs a MIME conform string including all the parameters
+ * associated with the given Content-Type object. It should NOT be used if
+ * you need an opaque copy of the current MIME part (e.g. for PGP purposes).
+ */
+char *
+mm_content_paramstostring(struct mm_content *ct)
+{
+	size_t size, new_size;
+	struct mm_ct_param *param;
+	char *param_string, *cur_param;
+	char *buf;
+
+	size = 1;
+	param_string = NULL;
+	cur_param = NULL;
+
+	param_string = (char *) xmalloc(size);
+	*param_string = '\0';
+
+	/* Concatenate all Content-Type parameters attached to the current
+	 * Content-Type object to a single string.
+	 */
+	SLIST_FOREACH(param, &ct->params, next) {
+		if (asprintf(&cur_param, "; %s=\"%s\"", param->name, 
+		    param->value) == -1) {
+			goto cleanup;
+		}
+
+		new_size = size + strlen(cur_param) + 1;
+		
+		if (new_size < 0 || new_size > 1000) {
+			size = 0;
+			goto cleanup;
+		}	
+
+		buf = (char *) xrealloc(param_string, new_size);
+		if (buf == NULL) {
+			size = 0;
+			goto cleanup;
+		}
+
+		param_string = buf;
+		size = new_size;
+		strlcat(param_string, cur_param, size);
+		
+		xfree(cur_param);
+		cur_param = NULL;
+	}
+
+	return param_string;
+
+cleanup:
+	if (param_string != NULL) {
+		xfree(param_string);
+		param_string = NULL;
+	}
+	if (cur_param != NULL) {
+		xfree(cur_param);
+		cur_param = NULL;
+	}	
+	return NULL;
 }
 
 /** @} */

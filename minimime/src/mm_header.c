@@ -1,5 +1,5 @@
 /*
- * $Id: mm_header.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_header.c,v 1.2 2004/06/01 02:52:40 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -83,6 +83,7 @@ mm_mimeheader_new(void)
 	
 	header->name = NULL;
 	header->value = NULL;
+	header->opaque = NULL;
 
 	return header;
 }
@@ -105,6 +106,10 @@ mm_mimeheader_free(struct mm_mimeheader *header)
 		xfree(header->value);
 		header->value = NULL;
 	}
+	if (header->opaque != NULL) {
+		xfree(header->opaque);
+		header->opaque = NULL;
+	}	
 
 	xfree(header);
 	header = NULL;
@@ -257,6 +262,22 @@ mm_mimeheader_parsefmt(int flags, const char *fmt, ...)
 	va_end(ap);
 
 	header = mm_mimeheader_parse(result, flags, &lheader);
+	return header;
+}
+
+/**
+ * Creates a new MIME header, but does no checks whatsoever (create as-is)
+ */
+struct mm_mimeheader *
+mm_mimeheader_generate(const char *name, const char *value)
+{
+	struct mm_mimeheader *header;
+
+	header = mm_mimeheader_new();
+
+	header->name = xstrdup(name);
+	header->value = xstrdup(value);
+
 	return header;
 }
 

@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.1 2004/05/03 22:05:56 jfi Exp $
+ * $Id: mm.h,v 1.2 2004/06/01 02:52:40 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -145,6 +145,7 @@ struct mm_mimeheader
 {
 	char *name; 
 	char *value;
+	char *opaque;
 	SLIST_ENTRY(mm_mimeheader) next;
 };
 
@@ -241,6 +242,7 @@ struct mm_mimeheader *mm_mimeheader_new(void);
 void mm_mimeheader_free(struct mm_mimeheader *);
 struct mm_mimeheader *mm_mimeheader_parse(const char *, int, struct mm_mimeheader **);
 struct mm_mimeheader *mm_mimeheader_parsefmt(int, const char *, ...);
+struct mm_mimeheader *mm_mimeheader_generate(const char *, const char *);
 int mm_mimeheader_uncomment(struct mm_mimeheader *);
 int mm_mimeheader_uncommentbyname(struct mm_mimepart *, const char *);
 int mm_mimeheader_uncommentall(struct mm_mimepart *);
@@ -263,10 +265,12 @@ char *mm_mimepart_decode(struct mm_mimepart *);
 struct mm_content *mm_mimepart_gettype(struct mm_mimepart *);
 size_t mm_mimepart_getlength(struct mm_mimepart *);
 char *mm_mimepart_getbody(struct mm_mimepart *);
+void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
 /** @} */
 
 struct mm_content *mm_content_new(void);
 void mm_content_free(struct mm_content *);
+int mm_content_attachparam(struct mm_content *, struct mm_ct_param *);
 struct mm_content *mm_content_parse(const char *, int);
 char *mm_content_getparambyname(struct mm_content *, const char *);
 int mm_content_setmaintype(struct mm_content *, char *, int);
@@ -278,6 +282,9 @@ char *mm_content_gettype(struct mm_content *);
 int mm_content_iscomposite(struct mm_content *);
 int mm_content_isvalidencoding(const char *);
 int mm_content_setencoding(struct mm_content *, const char *);
+char *mm_content_paramstostring(struct mm_content *);
+struct mm_ct_param *mm_ctparam_new(void);
+void mm_ctparam_free(struct mm_ct_param *);
 
 char *mm_flatten_mimepart(struct mm_mimepart *);
 char *mm_flatten_context(MM_CTX *);

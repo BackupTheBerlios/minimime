@@ -1,11 +1,15 @@
-# $Id: Makefile,v 1.1 2004/05/03 22:05:54 jfi Exp $
+# $Id: Makefile,v 1.2 2004/06/01 02:52:40 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
 CC?=gcc
 LD?=ld
+YACC?=yacc
+FLEX?=flex
 DEFINES?=
 SRCS= \
+	y.tab.c \
+	lex.mm_yy.c \
 	mm_init.c \
 	mm_base64.c \
 	mm_codecs.c \
@@ -44,8 +48,9 @@ DEBUG=
 SRCS+= minimime.c
 .endif
 
-# uncomment the following if you need to debug memory leaks within the
-# library.
+# Uncomment the following if you need to debug memory leaks within the
+# library. ATTENTION: the code is not suitable for production purposes
+# and could behave unexpectedly. You have been warned ;-).
 #DEFINES+= -D__HAVE_LEAK_DETECTION
 #DEFINES+= -DMM_DEBUG
 CFLAGS+=-Wall $(DEBUG) -I. $(DEFINES)
@@ -74,9 +79,21 @@ $(LIBNAME): $(OBJS)
 	ar -rv $(ARNAME) $(OBJS)
 	ranlib $(ARNAME)
 
+$(LIBNAME): $(OBJS)
+
+$(ARNAME): $(OBJS)
+
 minimime: $(LIBNAME) minimime.o
 #$(CC) $(CFLAGS) -o minimime.o -c minimime.c 
 	$(CC) -o $(TARGET) minimime.o -L. -lmmime
+
+lex.mm_yy.o: parser.l
+	$(FLEX) -Pmm_yy parser.l
+	$(CC) -c $(CFLAGS) lex.mm_yy.c
+
+y.tab.o: parser.y
+	$(YACC) -d -pmm_yy parser.y
+	$(CC) -c $(CFLAGS) y.tab.c
 
 test: minimime 
 	@echo "****************************************************************"
@@ -90,9 +107,12 @@ install: $(LIBNAME)
 	install -m 644 -o root -g 0 -c $(LIBNAME) /usr/local/lib
 
 clean:
+	rm -f lex.mm_yy.c
+	rm -f y.tab.*
 	rm -f *.o
 	rm -f *.core
 	rm -f $(TARGET)
 	rm -f $(LIBNAME)
+	rm -f ${ARNAME}
 	rm -f .depend
 

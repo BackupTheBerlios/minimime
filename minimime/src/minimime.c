@@ -40,7 +40,7 @@ main(int argc, char **argv)
 		ctx = mm_context_new();
 
 		/* Parse a file into our context */
-		if (mm_parse_file(ctx, argv[1], MM_PARSE_LOOSE) == -1) {
+		if (mm_parse_file(ctx, argv[1], MM_PARSE_LOOSE, 0) == -1) {
 			printf("ERROR: %s\n", mm_error_string());
 			exit(1);
 		}
