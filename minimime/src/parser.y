@@ -131,12 +131,14 @@ multipart_message:
 	{
 		dprintf("This was a multipart message\n");
 	}
+	;
 
 singlepart_message:	
 	headers body
 	{
 		dprintf("This was a single part message\n");
-	}	
+	}
+	;
 	
 headers :
 	header headers
