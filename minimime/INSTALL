@@ -1,0 +1,57 @@
+Installation guide for MiniMIME 0.1
+
+No ./configure style installation, sorry. Read the FAQ.
+
+1.) Unpack the source (you probably already have done this)
+
+2.) Edit the file "Make.conf" in the top level directory of the distribution
+    according to your system.
+
+    If you are on neither Free-, Net- or OpenBSD, you probably have to set
+    both of HAVE_STRLCAT and HAVE_STRLCPY to 0. Another important variable
+    is the PREFIX variable, which will control where MiniMIME will be
+    installed to ($PREFIX/lib and $PREFIX/include).
+
+3.) Type "make" in the top level directory. This should compile MiniMIME
+    cleanly. If it does not, please report the system used (OS, compiler,
+    libc version) and the exact error messages so I can have a look at it
+    and maybe fix the error.
+
+4.) Type "make test" to ensure the library will work on your version. If
+    it does not, follow the error reporting procedures of step 3.
+
+5.) Type "make install" to install the library and header files. Now you
+    should be ready to link other programs against MiniMIME.
+
+6.) If you feel like, you can type "make clean" now to clean up all the
+    cruft the compiler has left on your system. 
+
+
+NOTES:
+
+* MiniMIME currently needs BSD make (package pmake for most GNU/Linux
+  systems). I do not feel like maintaining two different makefiles for the
+  same task, and if the GNU folks think their make must be different, then
+  it should be so. I do not support that howsoever.
+
+* MiniMIME's makefiles honor some environment variables like GNU autoconf
+  does, to aid creating ports for *BSD systems. These environment variables
+  are, for example, PREFIX, CC, CFLAGS, LDFLAGS, LIBS, DESTDIR and a couple
+  of others (look into the makefiles for more detail). 
+
+
+MAKEFILE TARGETS:
+
+"all": 
+	Builds the shared library and the test program (dynamically linked)
+"lib": 
+	Only builds the shared library
+"test":
+	Builds the library, a small test program and runs a test suite to
+	look if the library can parse correctly on your platform.
+"debug": 
+	Builds a debuggable program (objects of the library directly linked in)
+"clean":
+	Cleans up the source tree
+"install":
+	Installs the library and header files

@@ -1,0 +1,19 @@
+$Id: TODO,v 1.1 2004/05/03 22:05:52 jfi Exp $
+
+MiniMIME TODO list (not complete)
+
+* Full MIME compliance (in progress)
+	- RFC2045: Should be fully compliant by now, beside Content-Type
+		   parameters.
+	- RFC2046: ?
+	- RFC2047: ?
+	- RFC2048: ?
+	- RFC2049: ?
+	- RFC2822: ?
+* En-/Decoder framework (almost done)
+* En-/Decoders for Base64/Quoted-Printable (base64 done)
+* File writeout of whole contexts and single MIME entities
+* MIME message creation, with compliance checks
+* MIME utility functions (such as Message-ID creation)
+* API functions for accessing various "members" of MiniMIME "objects" (in
+  progress)

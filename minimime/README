@@ -1,0 +1,45 @@
+MiniMIME - a library for parsing and constructing MIME messages
+
+Version 0.1 alpha
+Visit http://minimime.berlios.de to obtain the latest version.
+
+Copyright (C) 2003 Jann Fischer <rezine at mistrust.net>.
+All rights reserved.
+
+0. Requirements
+
+All you'll need is a C compiler (preferably GCC since I think I used some
+GNU specific stuff in at least some of the macros) and standard libraries.
+MiniMIME does not have any external dependencies. It should compile and
+run cleanly on any (nearly) POSIX-compliant system.
+
+1. What's it?
+
+MiniMIME is a library that provides a programmer friendly API for parsing
+and constructing MIME messages. The following RFCs are implemented:
+
+	RFC 2045: MIME Part One: Format of Internet Message Bodies
+	RFC 2046: MIME Part Two: Media Types
+	RFC 2049: MIME Part Five: Conformance Criteria and Examples
+
+It is intended to be as liberate as possible for incoming data while being as
+strict as possible for constructed data.
+
+
+2. Docs
+
+For API docs, check the docs subdirectory in this distribution. They are not
+finished by now.
+
+
+3. Bug reporting
+
+Please report bugs to <rezine at mistrust>. The best way to get the bug fixed
+is to make a patch by yourself and send it over with a detailed bug report.
+Also, check the file BUGS in this distribution before reporting a bug.
+
+
+4. Related informations
+
+RFCs 2045 through 2049
+RFC 2822

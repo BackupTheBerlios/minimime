@@ -1,0 +1,13 @@
+$Id: BUGS,v 1.1 2004/05/03 22:05:52 jfi Exp $
+
+Known bugs in MiniMIME
+
+* MiniMIME is yet unable to parse content type parameters which contain
+  certain tspecials ("=" and ";") in it's value.
+
+* The grammar parsing should really be done with some sophisticated parser,
+  tool like yacc, instead of the way it is done now.
+
+* There are quite a couple of things to do. Read TODO in this package for
+  more informations. Also, there are surely items to do that are not on the
+  TODO list.

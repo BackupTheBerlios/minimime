@@ -1,0 +1,69 @@
+MiniMIME API documentation
+
+1.) Steps to create an own MIME message:
+
+	 1. Create a new context
+	 2. Create a new MIME part object
+	 3. Attach MIME headers to the MIME part object
+	 4. Attach a body to the MIME part object
+	 5. Assign a Content-Type for the MIME part object
+	 6. Attach the MIME part to the context
+	 7. Repeat at step 2 if necessary
+	 8. Create an envelope for the MIME context
+	 9. Finalize the context
+	10. Convert the context to plain text
+
+1.1) Create a new context
+
+MM_CTX *ctx;
+
+ctx = mm_context_new();
+if (ctx == NULL) {
+	printf("ERROR %d: %s\n", mm_errno, mm_error_string());
+	exit(1);
+}
+
+1.2) Create a new MIME part object
+
+struct mm_mimepart *part;
+
+part = mm_mimepart_new();
+if (part == NULL) {
+	printf("ERROR %d: %s\n", mm_errno, mm_error_string());
+	exit(1);
+}
+
+1.3) Attach MIME headers to the MIME part object
+
+struct mm_mimeheader *header;
+
+header = mm_mimeheader_parse("X-Creator: MiniMIME");
+mm_mimepart_attachheader(part, header);
+
+1.4) Attach a body to the MIME part object
+
+char *body = "This is just a test";
+
+mm_mimepart_attachbody(part, body);
+
+1.5) 
+
+struct mm_content *ct;
+struct mm_ct_param *param;
+
+ct = mm_content_parse("text/plain; charset=\"US-ASCII\"", 0);
+if (ct == NULL) {
+	printf("ERROR %d: %s", mm_errno, mm_error_string());
+	exit(1);
+}
+
+mm_mimepart_attachcontenttype(part, ct);
+
+1.6) Attach the MIME part to the MiniMIME context
+
+mm_context_attachpart(ctx, part);
+
+
+1.7) Repeat at step 1.2 if necessary
+
+1.8)

@@ -1,0 +1,26 @@
+$Id: FAQ,v 1.1 2004/05/03 22:05:52 jfi Exp $
+
+MiniMIME Frequently Asked Questions (FAQ)
+
+Q: Why don't you use GNU autotools for configuring/compiling/installing the
+   library?
+
+A: Have you ever seen how much bloat those tools add? For example, MiniMIME
+   source code and all files are about 233K in size. After GNUification with
+   autoconf and friends, we have slightly above 2M (!) of data in the source
+   package. This is just too much.
+
+
+Q: Are there any plans to have C++ wrapper classes for MiniMIME?
+
+A: Yes. As soon as MiniMIME is in a usable state, I will begin to write C++
+   abstraction classes for it.
+   
+
+Q: Why a MIME library in first place? Aren't there enough already?
+
+A: I have seen several. Most are for C++ and purely object oriented, which is
+   not acceptable for me, since I needed a MIME implementation for a pure C
+   project. The ones I have seen for C (like gmime) have either unacceptable
+   dependencies (glib) or a horrible API (not to say that my API would be
+   better, but it suits my needs more :).

@@ -1,0 +1,13 @@
+Source documentation guidelines
+
+MiniMIME source code is documented using Doxygen (http://www.doxygen.org).
+This means, every non-static function should be documented using a block
+which Doxygen understands.
+
+Such a block starts with the identifier
+
+/**
+
+end ends like a normal C comment
+
+*/
