@@ -9,7 +9,10 @@
 LD_LIBRARY_PATH=.
 export LD_LIBRARY_PATH
 
-for f in test/test*.txt; do
+DIRECTORY=${1:-test}
+FILES=${2:-"*"}
+
+for f in ${DIRECTORY}/${FILES}; do
 	echo -n "Running test for $f (file)... "
 	output=`./minimime $f 2>&1`
 	[ $? != 0 ] && {

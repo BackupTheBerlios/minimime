@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.6 2004/06/02 03:09:37 jfi Exp $
+ * $Id: mm.h,v 1.7 2004/06/03 13:05:31 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -50,7 +50,6 @@ SLIST_HEAD(mm_params, mm_param);
 SLIST_HEAD(mm_codecs, mm_codec);
 SLIST_HEAD(mm_warnings, mm_warning);
 
-
 /**
  * Available parser flags
  */
@@ -73,10 +72,15 @@ enum mm_encoding
 	MM_ENCODING_UNKNOWN,
 };
 
+/**
+ * Message type
+ */
 enum mm_messagetype
 {
+	/** Flat message */
 	MM_MSGTYPE_FLAT = 0,
-	MM_MSGTYPE_MULTIPART = 1,
+	/** Composite message */
+	MM_MSGTYPE_MULTIPART,
 };
 
 /**
@@ -130,58 +134,104 @@ struct mm_warning
 };
 
 /**
- * MiniMIME codec object
+ * Representation of a MiniMIME codec object
  */
 struct mm_codec
 {
+	/** Encoding associated with this object */
 	enum mm_encoding id;
+	/** Textual representation of the encoding */
 	char *encoding;
+
+	/** Pointer to the encoder callback function */
 	char *(*encoder)(char *, u_int32_t);
+	/** Pointer to the decoder callback function */
 	char *(*decoder)(char *);
+
+	/** Pointer to the next codec */
 	SLIST_ENTRY(mm_codec) next;
 };
 
+/**
+ * Representation of a mail or MIME header field
+ */
 struct mm_mimeheader
 {
+	/** Name of the header field */
 	char *name; 
+	/** Value of the header field */
 	char *value;
-	char *opaque;
+
+	/** Pointer to the next header field */
 	SLIST_ENTRY(mm_mimeheader) next;
 };
 
 /**
- * Represents a MIME Content-Type parameter
+ * Representation of a MIME Content-Type parameter
  */
 struct mm_param
 {
+	/** Name of the parameter */
 	char *name; 
+	/** Value of the parameter */
 	char *value; 
 	SLIST_ENTRY(mm_param) next;
 };
 
 /**
- * Represents a MIME Content-Type object
+ * Representation of a MIME Content-Type object
  */
 struct mm_content
 {
+	/** Main type */
 	char *maintype;
+	/** Sub type */
 	char *subtype;
+
+	/** List of parameters attached to the Content-Type */
 	struct mm_params params;
+
+	/** String representing the encoding */
 	char *encstring;
+	/** MiniMIME representation of the encoding */
 	enum mm_encoding encoding;
 };
 
 /**
- * Represents a MIME part
+ * Representation of a MIME part 
  */
 struct mm_mimepart
 {
+	/** Mail headers of the MIME part */
 	struct mm_mimeheaders headers;
-	char *copy;
+	
+	/** Length of the MIME part (with headers) */
+	size_t opaque_length;
+	/** Part body's opaque representation (with headers) */
 	char *opaque_body;
-	char *body;
+
+	/** Length of the MIME part (without headers) */
 	size_t length;
+	/** Part body's representation (without headers) */
+	char *body;
+
+	/** Content-Type object of the part */
 	struct mm_content *type;
+	
+	/** Content-Disposition type */
+	char *disposition_type;
+	/** Content-Disposition filename */
+	char *filename;
+	/** Content-Disposition creation-date */
+	char *creation_date;
+	/** Content-Disposition modification-date */
+	char *modification_date;
+	/** Content-Disposition read-date */
+	char *read_date;
+	/** Content-Disposition size */
+	char *disposition_size;
+	
+	/** Pointer to the next MIME part */
 	SLIST_ENTRY(mm_mimepart) next;
 };
 
@@ -201,6 +251,13 @@ struct mm_context
 typedef struct mm_context MM_CTX;
 typedef struct mm_context mm_ctx_t;
 
+/**
+ * @}
+ */
+ 
+/** @{
+ * @name Utility functions
+ */
 char *mm_unquote(const char *);
 char *mm_uncomment(const char *);
 char *mm_stripchars(char *, char *);
@@ -259,14 +316,14 @@ void mm_mimepart_free(struct mm_mimepart *);
 int mm_mimepart_attachheader(struct mm_mimepart *, struct mm_mimeheader *);
 int mm_mimepart_countheaders(struct mm_mimepart *part);
 int mm_mimepart_countheaderbyname(struct mm_mimepart *, const char *);
-struct mm_mimeheader *mm_mimepart_getheaderbyname(struct mm_mimepart *, const char *);
-const char *mm_mimepart_getheadervalue(struct mm_mimepart *, const char *);
+struct mm_mimeheader *mm_mimepart_getheaderbyname(struct mm_mimepart *, const char *, int);
+const char *mm_mimepart_getheadervalue(struct mm_mimepart *, const char *, int);
 int mm_mimepart_headers_start(struct mm_mimepart *, struct mm_mimeheader **);
 struct mm_mimeheader *mm_mimepart_headers_next(struct mm_mimepart *, struct mm_mimeheader **);
 char *mm_mimepart_decode(struct mm_mimepart *);
 struct mm_content *mm_mimepart_gettype(struct mm_mimepart *);
 size_t mm_mimepart_getlength(struct mm_mimepart *);
-char *mm_mimepart_getbody(struct mm_mimepart *);
+char *mm_mimepart_getbody(struct mm_mimepart *, int);
 void mm_mimepart_attachcontenttype(struct mm_mimepart *, struct mm_content *);
 /** @} */
 

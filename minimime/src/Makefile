@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.3 2004/06/01 09:39:48 jfi Exp $
+# $Id: Makefile,v 1.4 2004/06/03 13:05:31 jfi Exp $
 # MiniMIME makefile
 #
 .include "../Make.conf"
@@ -85,7 +85,6 @@ $(LIBNAME): $(OBJS)
 $(ARNAME): $(OBJS)
 
 minimime: $(LIBNAME) minimime.o
-#$(CC) $(CFLAGS) -o minimime.o -c minimime.c 
 	$(CC) -o $(TARGET) minimime.o -L. -lmmime
 
 lex.mm_yy.o: parser.l

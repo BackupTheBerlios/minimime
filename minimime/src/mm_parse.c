@@ -1,5 +1,5 @@
 /*
- * $Id: mm_parse.c,v 1.3 2004/06/01 06:51:47 jfi Exp $
+ * $Id: mm_parse.c,v 1.4 2004/06/03 13:05:31 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -46,6 +46,8 @@
 
 #include "parser.h"
 #include "y.tab.h"
+
+int PARSER_setbuffer(const char *);
 
 extern FILE *mm_yyin;
 

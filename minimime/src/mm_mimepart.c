@@ -1,5 +1,5 @@
 /*
- * $Id: mm_mimepart.c,v 1.2 2004/06/02 01:55:52 jfi Exp $
+ * $Id: mm_mimepart.c,v 1.3 2004/06/03 13:05:31 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -48,12 +48,27 @@
  * This module contains functions for manipulating MIME header objects.
  */
 
+/** @defgroup mimepart Accessing and manipulating MIME parts 
+ *
+ * MIME parts, also called entities, represent the structure of a MIME
+ * message. ``Normal'' internet messages have only a single part, and
+ * are called ``flat'' messages. Multipart messages have more then one
+ * part, and each MIME part can have it's own subset of headers.
+ *
+ * Provided here are functions to easily access all informations from
+ * a MIME part, including their specific headers and bodies.
+ */
+
+/** @{ 
+ * @name Creating and destroying MIME parts 
+ */
+
 /**
  * Allocates memory for a new mm_mimepart structure and initializes it.
- * The memory must be freed by using mm_mimepart_free() later on.
  *
- * @return pointer to a struct of type mm_mimeheader or NULL on failure
+ * @return A pointer to a struct of type mm_mimeheader or NULL on failure
  * @see mm_mimepart_free
+ * @note The memory must be freed by using mm_mimepart_free() later on.
  */
 struct mm_mimepart *
 mm_mimepart_new(void)
@@ -64,11 +79,20 @@ mm_mimepart_new(void)
 
 	SLIST_INIT(&part->headers);
 
-	part->copy = NULL;
+	part->opaque_length = 0;
 	part->opaque_body = NULL;
-	part->body = NULL;
+	
 	part->length = 0;
+	part->body = NULL;
+	
 	part->type = NULL;
+
+	part->disposition_type = NULL;
+	part->filename = NULL;
+	part->creation_date = NULL;
+	part->modification_date = NULL;
+	part->read_date = NULL;
+	part->disposition_size = NULL;
 
 	return part;
 }
@@ -125,8 +149,7 @@ mm_mimepart_fromfile(const char *filename)
 /**
  * Frees all memory allocated by a mm_mimepart object.
  *
- * @param part a pointer to an allocated mm_mimepart object
- * @return nothing
+ * @param part A pointer to an allocated mm_mimepart object
  * @see mm_mimepart_new
  */
 void
@@ -139,11 +162,6 @@ mm_mimepart_free(struct mm_mimepart *part)
 	SLIST_FOREACH(header, &part->headers, next) {
 		mm_mimeheader_free(header);
 		SLIST_REMOVE(&part->headers, header, mm_mimeheader, next);
-	}
-
-	if (part->copy != NULL) {
-		xfree(part->copy);
-		part->copy = NULL;
 	}
 
 	if (part->opaque_body != NULL) {
@@ -160,14 +178,46 @@ mm_mimepart_free(struct mm_mimepart *part)
 		part->type = NULL;
 	}
 
+	if (part->disposition_type != NULL) {
+		xfree(part->disposition_type);
+		part->disposition_type = NULL;
+	}	
+	if (part->filename != NULL) {
+		xfree(part->filename );
+		part->filename = NULL;
+	}	
+	if (part->creation_date != NULL) {
+		xfree(part->creation_date );
+		part->creation_date = NULL;
+	}
+	if (part->modification_date != NULL) {
+		xfree(part->modification_date );
+		part->modification_date = NULL;
+	}
+	if (part->read_date != NULL) {
+		xfree(part->read_date );
+		part->read_date = NULL;
+	}
+	if (part->disposition_size != NULL) {
+		xfree(part->disposition_size);
+		part->read_date = NULL;
+	}
+
 	xfree(part);
+	part = NULL;
 }
+
+/** @} */
+
+/** @{ 
+ * @name Accessing the MIME part's mail header
+ */
 
 /**
  * Attaches a mm_mimeheader object to a MIME part
  *
- * @param part a valid MIME part object
- * @param header a valid MIME header object
+ * @param part A valid MIME part object
+ * @param header A valid MIME header object
  * @return 0 if successfull or -1 if the header could not be attached
  */
 int
@@ -191,10 +241,10 @@ mm_mimepart_attachheader(struct mm_mimepart *part, struct mm_mimeheader *header)
 }
 
 /**
- * Retrieve the number of MIME headers available in a MIME part
+ * Retrieves the number of MIME headers available in a MIME part
  *
- * @param part a valid MIME part object
- * @return then number of MIME headers within the MIME part
+ * @param part A valid MIME part object
+ * @return The number of MIME headers within the MIME part
  */
 int
 mm_mimepart_countheaders(struct mm_mimepart *part)
@@ -214,11 +264,11 @@ mm_mimepart_countheaders(struct mm_mimepart *part)
 }
 
 /**
- * Retrieve the number of MIME headers with a given name in a MIME part
+ * Retrieves the number of MIME headers with a given name in a MIME part
  *
- * @param part a valid MIME part object
- * @param name the name of the MIME header which to count for
- * @return the number of MIME headers within the MIME part
+ * @param part A valid MIME part object
+ * @param name The name of the MIME header which to count for
+ * @return The number of MIME headers within the MIME part
  */
 int
 mm_mimepart_countheaderbyname(struct mm_mimepart *part, const char *name)
@@ -242,19 +292,28 @@ mm_mimepart_countheaderbyname(struct mm_mimepart *part, const char *name)
 /**
  * Get a MIME header object from a MIME part
  *
- * @param part the MIME part object
- * @param the name of the MIME header which to retrieve
- * @return a MIME header object on success or a NULL pointer when the given
- * MIME header is not found
+ * @param part A valid MIME part object
+ * @param name The name of the MIME header which to retrieve
+ * @param idx Which header field to get (in case of multiple headers of the
+ *	      same name).
+ * @return A pointer to the requested MIME header on success, or NULL if there
+ *         either isn't a header with the requested name or idx is out of 
+ *         range.
  */
 struct mm_mimeheader *
-mm_mimepart_getheaderbyname(struct mm_mimepart *part, const char *name)
+mm_mimepart_getheaderbyname(struct mm_mimepart *part, const char *name, int idx)
 {
 	struct mm_mimeheader *header;
+	int curidx;
+
+	curidx = 0;
 
 	SLIST_FOREACH(header, &part->headers, next) {
 		if (!strcasecmp(header->name, name)) {
-			return header;
+			if (curidx == idx)
+				return header;
+			else
+				curidx++;
 		}
 	}
 
@@ -262,12 +321,23 @@ mm_mimepart_getheaderbyname(struct mm_mimepart *part, const char *name)
 	return NULL;
 }
 
+/**
+ * Gets the value of a MIME header object
+ *
+ * @param part A valid MIME part object
+ * @param name The name of the header field to get the value from
+ * @param idx The index of the header field to get, in case there are multiple
+ *            headers with the same name.
+ * @return A pointer to the requested value on success, or NULL if there either
+ *         isn't a header with the requested name or idx is out of range.
+ *
+ */
 const char *
-mm_mimepart_getheadervalue(struct mm_mimepart *part, const char *name)
+mm_mimepart_getheadervalue(struct mm_mimepart *part, const char *name, int idx)
 {
 	struct mm_mimeheader *header;
 
-	header = mm_mimepart_getheaderbyname(part, name);
+	header = mm_mimepart_getheaderbyname(part, name, idx);
 	if (header == NULL)
 		return NULL;
 	else
@@ -280,18 +350,23 @@ mm_mimepart_getheadervalue(struct mm_mimepart *part, const char *name)
  * @param part A valid MIME part object
  * @param id The address of a MIME header object (to allow reentrance)
  * @return 0 on success or -1 on failure
- * @ref mm_mimepart_headers_next
+ * @see mm_mimepart_headers_next
  * 
- * If you wish to loop headers without using queue(3) macros, you can do it
- * in the following way:
+ * Looping through headers can be done in the following way:
  *
  * @code
  * struct mm_mimeheader *header, *lheader;
+ *
  * mm_mimepart_headers_start(part, &lheader);
+ *
  * while ((header = mm_mimepart_headers_next(part, &lheader)) != NULL) {
  *	printf("%s: %s\n", header->name, header->value);	
  * }
+ *
  * @endcode
+ *
+ * For convienience, the macro mm_mimepart_headers_foreach() can be used to
+ * loop through headers in a one-shot manner.
  */
 int
 mm_mimepart_headers_start(struct mm_mimepart *part, struct mm_mimeheader **id)
@@ -331,6 +406,59 @@ mm_mimepart_headers_next(struct mm_mimepart *part, struct mm_mimeheader **id)
 	return header;
 }
 
+/** @} */
+
+/** @{
+ * @name Accessing and manipulating the MIME part's body
+ */
+
+/**
+ * Gets the pointer to the MIME part's body data
+ *
+ * @param part A valid MIME part object
+ * @param opaque Whether to get the opaque part or not
+ * @return A pointer to the MIME part's body
+ * @see mm_mimepart_setbody
+ *
+ */
+char *
+mm_mimepart_getbody(struct mm_mimepart *part, int opaque)
+{
+	assert(part != NULL);
+
+	if (opaque)
+		return part->opaque_body;
+	else	
+		return part->body;
+}
+
+/**
+ * Sets the MIME part's body data
+ *
+ * @param part A valid MIME part object
+ * @param data A pointer to the data which to set
+ * @see mm_mimepart_getbody
+ *
+ * This functions sets the body data for a given MIME part. The string pointed
+ * to by data must be NUL-terminated. The data is copied into the MIME part's
+ * body, and thus, the memory pointed to by data can be freed after the
+ * operation. 
+ */
+void
+mm_mimepart_setbody(struct mm_mimepart *part, const char *data)
+{
+	assert(part != NULL);
+	assert(data != NULL);
+
+	if (part->body != NULL) {
+		xfree(part->body);
+		part->body = NULL;
+	}
+
+	part->body = xstrdup(data);
+	part->length = strlen(data);
+}
+
 /**
  * Decodes a MIME part according to it's encoding using MiniMIME codecs
  *
@@ -368,7 +496,10 @@ mm_mimepart_decode(struct mm_mimepart *part)
 	return decoded;
 }
 
-/** @{ */
+/** @{ 
+ * @name Accessing the MIME part's Content-Type information
+ */
+
 /**
  * Attaches a context type object to a MIME part
  *
@@ -379,29 +510,6 @@ void
 mm_mimepart_attachcontenttype(struct mm_mimepart *part, struct mm_content *ct)
 {
 	part->type = ct;
-}
-
-char *
-mm_mimepart_getbody(struct mm_mimepart *part)
-{
-	assert(part != NULL);
-
-	return part->body;
-}
-
-void
-mm_mimepart_setbody(struct mm_mimepart *part, const char *data)
-{
-	assert(part != NULL);
-	assert(data != NULL);
-
-	if (part->body != NULL) {
-		xfree(part->body);
-		part->body = NULL;
-	}
-
-	part->body = xstrdup(data);
-	part->length = strlen(data);
 }
 
 struct mm_content *

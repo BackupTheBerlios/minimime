@@ -1,5 +1,5 @@
 /*
- * $Id: mm_context.c,v 1.1 2004/05/03 22:05:58 jfi Exp $
+ * $Id: mm_context.c,v 1.2 2004/06/03 13:05:31 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -388,7 +388,7 @@ mm_context_addaddress(MM_CTX *ctx, int which, const char *address,
 	 * is correctly delimeted by a semicolon. Else, we'll create a new
 	 * header object and attach it to the envelope.
 	 */
-	header = mm_mimepart_getheaderbyname(part, "To");
+	header = mm_mimepart_getheaderbyname(part, "To", 0);
 	if (header == NULL) {
 		header = mm_mimeheader_parsefmt(0, "To: %s\n", recipient);
 		mm_mimepart_attachheader(part, header);
@@ -475,6 +475,13 @@ cleanup:
 	}
 }
 
+/**
+ * Checks whether a given context represents a composite (multipart) message
+ *
+ * @param ctx A valid MiniMIME context object
+ * @return 1 if the context is a composite message or 0 if it's flat
+ *
+ */
 int
 mm_context_iscomposite(MM_CTX *ctx)
 {

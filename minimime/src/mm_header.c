@@ -1,5 +1,5 @@
 /*
- * $Id: mm_header.c,v 1.2 2004/06/01 02:52:40 jfi Exp $
+ * $Id: mm_header.c,v 1.3 2004/06/03 13:05:31 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -83,7 +83,6 @@ mm_mimeheader_new(void)
 	
 	header->name = NULL;
 	header->value = NULL;
-	header->opaque = NULL;
 
 	return header;
 }
@@ -106,10 +105,6 @@ mm_mimeheader_free(struct mm_mimeheader *header)
 		xfree(header->value);
 		header->value = NULL;
 	}
-	if (header->opaque != NULL) {
-		xfree(header->opaque);
-		header->opaque = NULL;
-	}	
 
 	xfree(header);
 	header = NULL;
