@@ -467,13 +467,16 @@ body:
 
 %%
 
-void mm_yyerror(const char *str)
+int
+mm_yyerror(const char *str)
 {
 	mm_errno = MM_ERROR_PARSE;
 	mm_error_setmsg("%s", str);
+	return -1;
 }
 
-int mm_yywrap(void)
+int 
+mm_yywrap(void)
 {
 	return 1;
 }
@@ -556,66 +559,3 @@ PARSER_initialize(MM_CTX *newctx)
 	return 1;
 }
 
-/*
-int
-main(int argc, char **argv)
-{
-	FILE *fp;
-	struct mm_mimeheader *last, *this;
-	int parts, i;
-
-	if (argc != 2) {
-		fprintf(stderr, "USAGE: %s <file>\n", argv[0]);
-		exit(1);
-	}
-
-	if ((fp = fopen(argv[1], "r")) == NULL) {
-		fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
-		exit(1);
-	}
-
-	yyin = fp;
-	curin = fp;
-	
-	mm_library_init();
-
-	ctx = mm_context_new();
-	envelope = mm_mimepart_new();
-
-	assert(ctx != NULL);
-	assert(envelope != NULL);
-
-	current_mimepart = envelope;
-	ctype = mm_content_new();
-	
-	if (yyparse() != 0) {
-		printf("ERROR: ERROR\n");
-	}
-
-	dprintf("Message parsed successfully, %d lines\n", lineno);
-	dprintf("Message contained %d MIME %s\n", mime_parts, 
-	    mime_parts > 1 ? "parts" : "part");
-
-	parts = mm_context_countparts(ctx);
-
-	dprintf("MiniMIME says: %d parts\n", parts);
-	
-	for (i = 0; i < parts; i++) {
-		dprintf("SHOWING PART %d\n", i);
-		tmppart = mm_context_getpart(ctx, i);
-		assert(tmppart != NULL);
-		if (mm_mimepart_headers_start(tmppart, &last) == -1) {
-			dprintf("NO HEADERS FOR THIS MIMEPART\n");
-		} else {	
-			while ((this = mm_mimepart_headers_next(tmppart, &last)) != NULL) {
-				dprintf("%s: %s\n", this->name, this->value);
-			}
-			if (tmppart->type != NULL) {
-				dprintf("CT-P: %s\n", mm_content_paramstostring(tmppart->type));
-			}
-		}
-	}	
-	
-	exit(0);
-}
-*/
