@@ -1,4 +1,4 @@
-$Id: TODO,v 1.1 2004/05/03 22:05:52 jfi Exp $
+$Id: TODO,v 1.2 2004/06/01 06:56:24 jfi Exp $
 
 MiniMIME TODO list (not complete)
 
@@ -17,3 +17,6 @@ MiniMIME TODO list (not complete)
 * MIME utility functions (such as Message-ID creation)
 * API functions for accessing various "members" of MiniMIME "objects" (in
   progress)
+* Check and convert all linked lists (currently all SLIST) to more appropriate
+  list types (like SIMPLEQ for example) on a case by case basis.
+* Integrate different behaviour to the scanner according to parse flags  

@@ -1,12 +1,11 @@
-$Id: BUGS,v 1.1 2004/05/03 22:05:52 jfi Exp $
+$Id: BUGS,v 1.2 2004/06/01 06:56:24 jfi Exp $
 
 Known bugs in MiniMIME
 
-* MiniMIME is yet unable to parse content type parameters which contain
-  certain tspecials ("=" and ";") in it's value.
-
-* The grammar parsing should really be done with some sophisticated parser,
-  tool like yacc, instead of the way it is done now.
+* Reentrance. The current implementation using yacc does not allow for
+  reentrant parsing. Maybe using GNU bison and the %pure_parser option
+  would be a solution. I will have a look into this option. Also, I don't
+  know for sure about flex. Experience, anyone?
 
 * There are quite a couple of things to do. Read TODO in this package for
   more informations. Also, there are surely items to do that are not on the

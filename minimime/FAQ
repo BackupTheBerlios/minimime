@@ -1,4 +1,4 @@
-$Id: FAQ,v 1.1 2004/05/03 22:05:52 jfi Exp $
+$Id: FAQ,v 1.2 2004/06/01 06:56:24 jfi Exp $
 
 MiniMIME Frequently Asked Questions (FAQ)
 
@@ -22,5 +22,5 @@ Q: Why a MIME library in first place? Aren't there enough already?
 A: I have seen several. Most are for C++ and purely object oriented, which is
    not acceptable for me, since I needed a MIME implementation for a pure C
    project. The ones I have seen for C (like gmime) have either unacceptable
-   dependencies (glib) or a horrible API (not to say that my API would be
-   better, but it suits my needs more :).
+   dependencies (glib), unacceptable licenses (GPL) or a horrible API (not to
+   say that my API would be better, but it suits my needs more :).
