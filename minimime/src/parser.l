@@ -76,6 +76,8 @@ extern int mime_parts;
 extern char *boundary_string;
 extern char *endboundary_string;
 
+extern const char *message_buffer;
+
 size_t message_len = 0;
 size_t buffer_length = 0;
 
@@ -399,6 +401,13 @@ TSPECIAL [a-zA-Z0-9)(<>@,;:/\-.=_+'? ]
 
 
 %%
+
+void
+PARSER_setbuffer(const char *string)
+{
+	message_buffer = string;
+	yy_scan_string(string);
+}
 
 /**
  * Counts how many lines a given string represents in the message (in case of

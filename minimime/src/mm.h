@@ -1,5 +1,5 @@
 /*
- * $Id: mm.h,v 1.2 2004/06/01 02:52:40 jfi Exp $
+ * $Id: mm.h,v 1.3 2004/06/01 06:51:47 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -214,6 +214,7 @@ inline void mm_striptrailing(char **, const char *);
  */
 int mm_library_init(void);
 int mm_library_isinitialized(void);
+int PARSER_initialize(MM_CTX *);
 
 /**
  * @}

@@ -48,6 +48,8 @@ extern int condition;
 char *boundary_string = NULL;
 char *endboundary_string = NULL;
 
+const char *message_buffer = NULL;
+
 extern char *body_text;
 extern FILE *mm_yyin;
 FILE *curin;
@@ -141,6 +143,11 @@ headers :
 	|
 	end_headers
 	{
+		/* If we did not find a Content-Type header for the current
+		 * MIME part (or envelope), we create one and attach it.
+		 * According to the RFC, a type of "text/plain" and a
+		 * charset of "us-ascii" can be assumed.
+		 */
 		struct mm_content *ct;
 		if (!have_contenttype) {
 			fprintf(stderr, "ATTACHING CONTENT TYPE GENERATED!!!\n");
@@ -370,24 +377,43 @@ body:
 	{
 		size_t body_size, current;
 		char *body;
+
 		dprintf("BODY (%d/%d), SIZE %d\n", $1.start, $1.end, $1.end - $1.start);
+
+		/* The next two cases should usually NOT happen */
+		if ($1.end <= $1.start) {
+			return(0);
+		}
+
+		if ($1.start < 0 || $1.end < 0) {
+			return(0);
+		}	
+
+		/* XXX: do we want to enforce a maximum body size? make it a
+		 * parser option? */
 
 		/* Read in the body message */
 		body_size = $1.end - $1.start;
-		current = ftell(curin);
-
 		body = (char *)malloc(body_size + 1);
-		assert(body != NULL);
+		if (body == NULL) {
+			mm_errno = MM_ERROR_ERRNO;
+			return(0);
+		}	
 		
-		fseek(curin, $1.start - 1, SEEK_SET);
-		fread(body, body_size - 1, 1, curin);
-		
-		/* Set it back to original position */
-		fseek(curin, current, SEEK_SET);
+		/* Get the message body either from a stream or a memory
+		 * buffer.
+		 */
+		if (mm_yyin != NULL) {
+			current = ftell(curin);
+			fseek(curin, $1.start - 1, SEEK_SET);
+			fread(body, body_size - 1, 1, curin);
+			fseek(curin, current, SEEK_SET);
+		} else if (message_buffer != NULL) {
+			strlcpy(body, message_buffer + $1.start - 1, body_size);
+		} 
 
 		current_mimepart->body = body;
 
-		//dprintf("BODY READ:\n'%s'\n", body);
 	}
 	;
 

@@ -1,5 +1,5 @@
 /*
- * $Id: mm_parse.c,v 1.2 2004/06/01 02:52:40 jfi Exp $
+ * $Id: mm_parse.c,v 1.3 2004/06/01 06:51:47 jfi Exp $
  *
  * MiniMIME - a library for handling MIME messages
  *
@@ -49,12 +49,38 @@
 
 extern FILE *mm_yyin;
 
+/**
+ * Parses a NUL-terminated string into a MiniMIME context
+ *
+ * @param ctx A valid MiniMIME context object
+ * @param text The NUL-terminated string to parse
+ * @param parseflags A valid combination of parser flags
+ * @returns 0 on success or -1 on failure
+ * @note Sets mm_errno if an error occurs
+ *
+ * This function parses a MIME message, stored in the memory region pointed to
+ * by text (must be NUL-terminated) according to the parseflags and stores the
+ * results in the MiniMIME context specified by ctx.
+ *
+ * The context needs to be initialized before using mm_context_new() and may
+ * be freed using mm_context_free().
+ */
+int
+mm_parse_mem(MM_CTX *ctx, const char *text, int parseflages, int foo)
+{
+	PARSER_initialize(ctx);
+	PARSER_setbuffer(text);
+	mm_yyin = NULL;
+	return mm_yyparse();
+}
+
 int
 mm_parse_file(MM_CTX *ctx, const char *filename, int parseflags, int foo)
 {
 	FILE *fp;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
+		mm_errno = MM_ERROR_ERRNO;
 		return -1;
 	}
 	
